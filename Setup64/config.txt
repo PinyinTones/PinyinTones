@@ -1,0 +1,6 @@
+;!@Install@!UTF-8!
+Title="PinyinTones for 64-bit Windows"
+BeginPrompt="Do you want to extract PinyinTones and launch the setup program?"
+Progress="yes"
+ExecuteFile="setup.exe"
+;!@InstallEnd@!
