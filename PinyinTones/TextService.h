@@ -138,7 +138,6 @@ private:
     ITfContext   *_pTextEditSinkContext;
     DWORD _dwTextEditSinkCookie;
 
-    CLangBarIcon *_pLangBarIcon;
     CLangBarItemButton *_pLangBarItem;
 
     // the current composition object.

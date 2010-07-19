@@ -445,8 +445,6 @@ void CTextService::_UninitLanguageBar()
 
     if (_pLangBarItem == NULL)
         return;
-    if (_pLangBarIcon == NULL)
-        return;
 
     if (_pThreadMgr->QueryInterface(IID_ITfLangBarItemMgr, (void **)&pLangBarItemMgr) == S_OK)
     {
