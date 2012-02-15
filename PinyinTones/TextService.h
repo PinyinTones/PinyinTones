@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2012 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -118,10 +118,14 @@ private:
     // utility function for KeyEventSink
     BOOL _IsKeyEaten(WPARAM wParam, LPARAM lParam);
 
-    // Utility function to insert characters and add tones
+    // Utility functions to insert characters and add tones
     HRESULT _InsertCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
-    int _LookupPinyinVowel(WCHAR ch, WCHAR *vowels, int length);
-    HRESULT CTextService::_AddTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
+    int _LookupChar(WCHAR ch, WCHAR *vowels, int cbVowels);
+    BOOL _IsTextCharacter(WCHAR ch);
+    void _FindLastVowels(WCHAR* buffer, int cbBuffer, WCHAR** ppVowelFirst, WCHAR** ppVowelLast);
+    void _RemoveTone(WCHAR* pVowelFirst, WCHAR* pVowelLast);
+    void _SetTone(WCHAR* pVowelFirst, WCHAR* pVowelLast, WCHAR ch);
+    HRESULT _SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
 
     //
     // state
