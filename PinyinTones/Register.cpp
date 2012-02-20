@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2012 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -60,8 +60,29 @@ BOOL RegisterProfiles()
     cchIconFile = MultiByteToWideChar(CP_ACP, 0, achFileNameA, cchA, achIconFile, ARRAYSIZE(achIconFile)-1);
     achIconFile[cchIconFile] = '\0';
 
+    // Retrieve the language to register PinyinTones under
+    LANGID defaultLanguageId = MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
+
+    LANGID languageId = defaultLanguageId;
+    HKEY hkRegPinyinTones;
+    hr = RegOpenKeyW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\PinyinTones", &hkRegPinyinTones);
+
+    // No error if the key or value don't exist, as we'll just use the default
+    if (hr == S_OK)
+    {
+      DWORD dwLanguageId;
+      DWORD cbData = sizeof(DWORD);
+      hr = RegGetValueW(hkRegPinyinTones, NULL, L"TSFLanguage", RRF_RT_DWORD, NULL,
+        &dwLanguageId, &cbData);
+
+      if ((hr == S_OK) && dwLanguageId)
+        languageId = (LANGID)dwLanguageId;
+      else
+        languageId = defaultLanguageId;
+    }
+
     hr = pInputProcessProfiles->AddLanguageProfile(c_clsidTextService,
-                                  TEXTSERVICE_LANGID, 
+                                  languageId, 
                                   c_guidProfile, 
                                   TEXTSERVICE_DESC, 
                                   (ULONG)wcslen(TEXTSERVICE_DESC),
