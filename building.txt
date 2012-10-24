@@ -1,0 +1,19 @@
+﻿There are two parallel build environments for PinyinTones.
+
+During development, build directly in Visual Studio.  This will create a dependency
+on the current Visual C++ runtime.  Binaries will be output under bin\dev.
+
+For release, we must build using the Windows Driver Kit, as recommended by the
+TSF team blog post:
+  http://blogs.msdn.com/b/tsfaware/archive/2008/01/17/visual-studio-2008-issues.aspx
+
+The WDK links against the system copy of msvcrt.dll, which allows the text service
+to be installed without any additional prerequisites.  WDK uses an older build chain,
+based on NMAKE.
+
+Prerequisites:
+  1. Windows Driver Kit 7.1
+  2. Windows 7 SDK
+  3. WIX Toolkit 3.6 -- must manually add to PATH
+
+To produce installers, open a WDK Vista environment, then run make-release.cmd.

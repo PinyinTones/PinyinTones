@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<?if $(var.Platform) = x64 ?>
+<?define target_x64 ?>
+<?endif ?>
+
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  
+	<Product
+    Id="*"
+    Name="PinyinTones"
+    Language="1033"
+    Version="0.1.0"
+    Manufacturer="Tao Yue"
+    UpgradeCode="f9be0fa3-4580-4f38-99d5-b432cc59acd5">
+
+    <Package
+      Description="PinyinTones Installer"
+      Manufacturer="Tao Yue"
+      InstallerVersion="200"
+      Compressed="yes"
+      InstallScope="perMachine"
+      Platform="$(var.Platform)"
+      />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <!-- PinyinTones 32-bit version 0.0.2 does not use the same UpgradeCode. -->
+    <Upgrade Id="eb85d505-b326-4d9a-bc8a-3474b3c82a08"> 
+      <UpgradeVersion Minimum="0.0.1" IncludeMinimum="yes" Maximum="0.0.2" IncludeMaximum="yes" Property="UPGRADE_002_32" /> 
+    </Upgrade>
+
+    <?ifndef target_x64 ?>
+      <Condition Message="You have launched the 32-bit PinyinTones installer on 64-bit Windows.  Please run the 64-bit installer instead.">
+        NOT Msix64
+      </Condition>
+    <?endif ?>
+    
+    <Condition Message="This version of PinyinTones requires Windows Vista, Windows 7, or Windows 8.">
+      <![CDATA[Installed OR VersionNT >= 600]]>
+    </Condition>
+
+    <Media Id="1" Cabinet="PinyinTones_$(var.Platform).cab" EmbedCab="yes" CompressionLevel="high" />
+    
+		<Feature Id="Complete" Title="Setup" Level="1">
+			<ComponentRef Id="PinyinTones_32" />
+      <?ifdef target_x64 ?>
+        <ComponentRef Id="PinyinTones_64" />
+      <?endif ?>
+    </Feature>
+	</Product>
+
+	<Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+
+      <Directory Id="SystemFolder" Name="SystemFolder">
+        <Component Id="PinyinTones_32" Guid="*" Win64="no">
+          <File Id="PinyinTones_32" Name="PinyinTones.dll" Source="..\bin\Vista_RETAIL\PinyinTones.dll" SelfRegCost="1" />
+        </Component>
+      </Directory>
+
+      <?ifdef target_x64 ?>      
+        <Directory Id="System64Folder" Name="System64Folder">
+          <Component Id="PinyinTones_64" Guid="*" Win64="yes">
+            <File Id="PinyinTones_64" Name="PinyinTones.dll" Source="..\bin\Vista_X64_RETAIL\PinyinTones.dll" SelfRegCost="1" />
+          </Component>
+        </Directory>
+      <?endif ?>
+
+    </Directory>
+  </Fragment>
+
+</Wix>

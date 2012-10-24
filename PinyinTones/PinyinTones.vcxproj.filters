@@ -105,9 +105,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Icon.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
     <ResourceCompile Include="PinyinTones.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
