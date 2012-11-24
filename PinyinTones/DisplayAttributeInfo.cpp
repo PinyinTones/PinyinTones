@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2012 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -28,7 +28,7 @@
 //----------------------------------------------------------------------------
 
 // the registry key of this text service to save the custmized display attribute
-const TCHAR c_szAttributeInfoKey[] = TEXT("Software\\Pinyin Tones Text Service");
+const TCHAR c_szAttributeInfoKey[] = TEXT("Software\\PinyinTones Text Service");
 
 // the registry values of the custmized display attributes
 const TCHAR CDisplayAttributeInfoInput::_s_szValueName[] = TEXT("DisplayAttributeInput");

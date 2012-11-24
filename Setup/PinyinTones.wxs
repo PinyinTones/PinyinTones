@@ -54,17 +54,26 @@
 	<Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
 
+      <!-- Must give name to work properly on an administrative installation. -->
       <Directory Id="SystemFolder" Name="SystemFolder">
-        <Component Id="PinyinTones_32" Guid="*" Win64="no">
-          <File Id="PinyinTones_32" Name="PinyinTones.dll" Source="..\bin\Vista_RETAIL\PinyinTones.dll" SelfRegCost="1" />
-        </Component>
+        <Directory Id="ImeFolder" Name="IME">
+          <Directory Id="PinyinTonesFolder" Name="PinyinTones">
+            <Component Id="PinyinTones_32" Guid="*" Win64="no">
+              <File Id="PinyinTones_32" Name="PinyinTones.dll" Source="..\bin\Vista_RETAIL\PinyinTones.dll" SelfRegCost="1" />
+            </Component>
+          </Directory>
+        </Directory>
       </Directory>
 
       <?ifdef target_x64 ?>      
         <Directory Id="System64Folder" Name="System64Folder">
-          <Component Id="PinyinTones_64" Guid="*" Win64="yes">
-            <File Id="PinyinTones_64" Name="PinyinTones.dll" Source="..\bin\Vista_X64_RETAIL\PinyinTones.dll" SelfRegCost="1" />
-          </Component>
+          <Directory Id="Ime64Folder" Name="IME">
+            <Directory Id="PinyinTones64Folder" Name="PinyinTones">
+              <Component Id="PinyinTones_64" Guid="*" Win64="yes">
+                <File Id="PinyinTones_64" Name="PinyinTones.dll" Source="..\bin\Vista_X64_RETAIL\PinyinTones.dll" SelfRegCost="1" />
+              </Component>
+            </Directory>
+          </Directory>
         </Directory>
       <?endif ?>
 

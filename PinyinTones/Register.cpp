@@ -25,6 +25,13 @@
 
 #define CLSID_STRLEN 38  // strlen("{xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx}")
 
+// Since we target multiple Windows versions, we must conditionally define
+// the Windows 8 GUIDs.
+#ifndef TF_TMF_IMMERSIVEMODE
+    const GUID GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT =
+        { 0x13a016df, 0x560b, 0x46cd, { 0x94, 0x7a, 0x4c, 0x3a, 0xf1, 0xe0, 0xe3, 0x5d } };
+#endif
+
 static const TCHAR c_szInfoKeyPrefix[] = TEXT("CLSID\\");
 static const TCHAR c_szInProcSvr32[] = TEXT("InProcServer32");
 static const TCHAR c_szModelName[] = TEXT("ThreadingModel");
@@ -35,63 +42,97 @@ static const TCHAR c_szModelName[] = TEXT("ThreadingModel");
 //
 //----------------------------------------------------------------------------
 
-BOOL RegisterProfiles()
+// Retrieve language for which to register the text service.
+LANGID ReadRegistryLangId()
 {
-    ITfInputProcessorProfiles *pInputProcessProfiles;
-    WCHAR achIconFile[MAX_PATH];
-    char achFileNameA[MAX_PATH];
-    DWORD cchA;
-    int cchIconFile;
     HRESULT hr;
 
-    hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
-                          IID_ITfInputProcessorProfiles, (void**)&pInputProcessProfiles);
-
-    if (hr != S_OK)
-        return E_FAIL;
-
-    hr = pInputProcessProfiles->Register(c_clsidTextService);
-
-    if (hr != S_OK)
-        goto Exit;
-
-    cchA = GetModuleFileNameA(g_hInst, achFileNameA, ARRAYSIZE(achFileNameA));
-
-    cchIconFile = MultiByteToWideChar(CP_ACP, 0, achFileNameA, cchA, achIconFile, ARRAYSIZE(achIconFile)-1);
-    achIconFile[cchIconFile] = '\0';
-
-    // Retrieve the language to register PinyinTones under
+    // Default to Japanese, in order to workaround bug in Microsoft Word,
+    // in which toned vowels appear in an East Asian font even when the
+    // characters exist in the current font.
     LANGID defaultLanguageId = MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
 
+    // Read alternative language ID from registry.
     LANGID languageId = defaultLanguageId;
     HKEY hkRegPinyinTones;
     hr = RegOpenKeyW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\PinyinTones", &hkRegPinyinTones);
 
-    // No error if the key or value don't exist, as we'll just use the default
     if (hr == S_OK)
     {
-      DWORD dwLanguageId;
-      DWORD cbData = sizeof(DWORD);
-      hr = RegGetValueW(hkRegPinyinTones, NULL, L"TSFLanguage", RRF_RT_DWORD, NULL,
-        &dwLanguageId, &cbData);
+        DWORD dwLanguageId;
+        DWORD cbData = sizeof(DWORD);
+        hr = RegGetValueW(hkRegPinyinTones, NULL, L"TSFLanguage",
+                          RRF_RT_DWORD, NULL, &dwLanguageId, &cbData);
 
-      if ((hr == S_OK) && dwLanguageId)
-        languageId = (LANGID)dwLanguageId;
-      else
-        languageId = defaultLanguageId;
+        if ((hr == S_OK) && dwLanguageId)
+            languageId = (LANGID)dwLanguageId;
+        else
+            languageId = defaultLanguageId;
     }
 
-    hr = pInputProcessProfiles->AddLanguageProfile(c_clsidTextService,
-                                  languageId, 
-                                  c_guidProfile, 
-                                  TEXTSERVICE_DESC, 
-                                  (ULONG)wcslen(TEXTSERVICE_DESC),
-                                  achIconFile,
-                                  cchIconFile,
-                                  TEXTSERVICE_ICON_INDEX);
+    return languageId;
+}
+
+
+BOOL RegisterProfiles()
+{
+    HRESULT hr;
+
+    ///////////////////////
+    // Get TSF interfaces
+    ///////////////////////
+
+    ITfInputProcessorProfiles *pProfiles;
+    hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
+                          IID_ITfInputProcessorProfiles, (void**)&pProfiles);
+    if (hr != S_OK)
+        goto Exit;
+
+    ITfInputProcessorProfileMgr *pProfileMgr;
+    hr = pProfiles->QueryInterface(IID_ITfInputProcessorProfileMgr, (void**)&pProfileMgr);
+    if (hr != S_OK)
+        goto Exit;
+
+    ////////////////////////////////////
+    // Collect registration parameters
+    ////////////////////////////////////
+
+    // Get icon to be displayed in the language bar
+    WCHAR achIconFile[MAX_PATH];
+    char achFileNameA[MAX_PATH];
+    DWORD cchA = GetModuleFileNameA(g_hInst, achFileNameA, ARRAYSIZE(achFileNameA));
+    int cchIconFile = MultiByteToWideChar(CP_ACP, 0, achFileNameA, cchA, achIconFile,
+                                          ARRAYSIZE(achIconFile) - 1);
+    achIconFile[cchIconFile] = '\0';
+
+    // Get language in which to register the text service
+    LANGID languageId = ReadRegistryLangId();
+
+    //////////////////////////
+    // Register text service
+    //////////////////////////
+
+    hr = pProfileMgr->RegisterProfile(
+        c_clsidTextService,
+        languageId,
+        c_guidProfile,
+        TEXTSERVICE_DESC,
+        (ULONG)wcslen(TEXTSERVICE_DESC),
+        achIconFile,
+        cchIconFile,
+        TEXTSERVICE_ICON_INDEX,
+        0,
+        0,
+        TRUE,
+        0);
+    if (hr != S_OK)
+        goto Exit;
 
 Exit:
-    pInputProcessProfiles->Release();
+    if (pProfileMgr)
+        pProfileMgr->Release();
+    if (pProfiles)
+        pProfiles->Release();
     return (hr == S_OK);
 }
 
@@ -108,7 +149,6 @@ void UnregisterProfiles()
 
     hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
                           IID_ITfInputProcessorProfiles, (void**)&pInputProcessProfiles);
-
     if (hr != S_OK)
         return;
 
@@ -129,25 +169,35 @@ BOOL RegisterCategories()
 
     hr = CoCreateInstance(CLSID_TF_CategoryMgr, NULL, CLSCTX_INPROC_SERVER, 
                           IID_ITfCategoryMgr, (void**)&pCategoryMgr);
-
     if (hr != S_OK)
-        return FALSE;
+        goto Exit;
 
-    //
-    // register this text service to GUID_TFCAT_TIP_KEYBOARD category.
-    //
+    // Register as a keyboard.
     hr = pCategoryMgr->RegisterCategory(c_clsidTextService,
                                         GUID_TFCAT_TIP_KEYBOARD, 
                                         c_clsidTextService);
+    if (hr != S_OK)
+        goto Exit;
 
-    //
-    // register this text service to GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER category.
-    //
+    // Register as a display attribute provider.
     hr = pCategoryMgr->RegisterCategory(c_clsidTextService,
                                         GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER, 
                                         c_clsidTextService);
+    if (hr != S_OK)
+        goto Exit;
+    
+    // Indicate support for Windows 8 immersive mode.
+    hr = pCategoryMgr->RegisterCategory(c_clsidTextService,
+                                        GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT,
+                                        c_clsidTextService);
+    if (hr != S_OK)
+    {
+      // We may be running on an older version of Windows, so a failure should
+      // be ignored.  Reset hr so that this function returns success.
+      hr = S_OK;
+    }
 
-
+Exit:
     pCategoryMgr->Release();
     return (hr == S_OK);
 }

@@ -30,8 +30,8 @@
 void DllAddRef();
 void DllRelease();
 
-#define TEXTSERVICE_DESC    L"Pinyin Tones"
-#define TEXTSERVICE_DESC_A   "Pinyin Tones Text Service"
+#define TEXTSERVICE_DESC    L"PinyinTones"
+#define TEXTSERVICE_DESC_A   "PinyinTones Text Service"
 #define TEXTSERVICE_MODEL   TEXT("Apartment")
 
 #define TEXTSERVICE_ICON_INDEX  1

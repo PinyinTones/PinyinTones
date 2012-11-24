@@ -24,7 +24,7 @@
 class CLangBarIcon;
 class CLangBarItemButton;
 
-class CTextService : public ITfTextInputProcessor,
+class CTextService : public ITfTextInputProcessorEx,
                      public ITfThreadMgrEventSink,
                      public ITfTextEditSink,
                      public ITfKeyEventSink,
@@ -41,6 +41,7 @@ public:
     STDMETHODIMP_(ULONG) Release(void);
 
     // ITfTextInputProcessor
+    STDMETHODIMP ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags);
     STDMETHODIMP Activate(ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     STDMETHODIMP Deactivate();
 
