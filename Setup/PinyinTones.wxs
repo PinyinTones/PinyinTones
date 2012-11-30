@@ -7,7 +7,7 @@
 
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   
-	<Product
+  <Product
     Id="*"
     Name="PinyinTones"
     Language="1033"
@@ -16,14 +16,18 @@
     UpgradeCode="f9be0fa3-4580-4f38-99d5-b432cc59acd5">
 
     <Package
-      Description="PinyinTones Installer"
+      Description="PinyinTones"
       Manufacturer="Tao Yue"
       InstallerVersion="200"
       Compressed="yes"
       InstallScope="perMachine"
       Platform="$(var.Platform)"
-      />
+    />
 
+    <WixVariable Id="WixUILicenseRtf" Value="..\Setup\license.rtf" />
+    <UIRef Id="WixUI_Minimal" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+	
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <!-- PinyinTones 32-bit version 0.0.2 does not use the same UpgradeCode. -->
@@ -43,15 +47,15 @@
 
     <Media Id="1" Cabinet="PinyinTones_$(var.Platform).cab" EmbedCab="yes" CompressionLevel="high" />
     
-		<Feature Id="Complete" Title="Setup" Level="1">
-			<ComponentRef Id="PinyinTones_32" />
+    <Feature Id="Complete" Title="Setup" Level="1">
+      <ComponentRef Id="PinyinTones_32" />
       <?ifdef target_x64 ?>
         <ComponentRef Id="PinyinTones_64" />
       <?endif ?>
     </Feature>
-	</Product>
+  </Product>
 
-	<Fragment>
+  <Fragment>
     <Directory Id="TARGETDIR" Name="SourceDir">
 
       <!-- Must give name to work properly on an administrative installation. -->

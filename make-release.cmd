@@ -102,9 +102,9 @@ candle -arch x64 -dPlatform=x64 -o ..\bin\PinyinTones64.wixobj PinyinTones.wxs
 if not %ERRORLEVEL%==0 goto end
 
 cd ..\bin
-light PinyinTones32.wixobj
+light -ext WixUIExtension PinyinTones32.wixobj
 if not %ERRORLEVEL%==0 goto end
-light PinyinTones64.wixobj
+light -ext WixUIExtension PinyinTones64.wixobj
 if not %ERRORLEVEL%==0 goto end
 
 :: Sign both MSIs
