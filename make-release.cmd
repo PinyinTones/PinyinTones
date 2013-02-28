@@ -25,6 +25,35 @@ set CERT_PASSWD=
 if not exist set-signing-cert.cmd goto error_signing_script
 call set-signing-cert.cmd
 
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: Build and sign PinyinTones
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: Build and sign DLLs
+call :build_dll x86 i386
+call :build_dll x64 AMD64
+
+:: Build and sign MSIs
+call :build_msi x86 32
+call :build_msi x64 64
+
+:: Done
+echo.
+echo -------------------------------------
+echo Release build complete.
+echo -------------------------------------
+goto end
+
+
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: Build PinyinTones DLL
+::   %1 = Platform (x86 or x64)
+::   %2 = CPU name (i386 or AMD64)
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:build_dll
+setlocal
+
 :: Clear to fool setenv into running a second time
 set DDKBUILDENV=
 
@@ -32,21 +61,16 @@ set DDKBUILDENV=
 set 386=
 set AMD64=
 
-pushd PinyinTones
-set PUSHED_DIR=1
-
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: First, build the x64 version 
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-setlocal
-
 :: Set environment for the desired target.  The batch file resets the current
 :: directory, so we have to restore it after the call.
 pushd \
-call %BASEDIR%\bin\setenv.bat %BASEDIR% fre %TARGET_OS% x64
+call %BASEDIR%\bin\setenv.bat %BASEDIR% fre %TARGET_OS% %1
 popd
-set CPU=AMD64
+
+pushd PinyinTones
+set PUSHED_DIR=1
+
+set CPU=%2
 
 :: Include path:
 ::   - Windows SDK for win32.mak
@@ -62,71 +86,62 @@ set LIB=%DDK_LIB_DEST%\%CPU%;%LIB%\Crt\%CPU%;%LIB%;
 nmake nodebug=1
 if not %ERRORLEVEL%==0 goto end
 
-:: Sign it
-set DESC=%DESC% (64-bit)
-signtool sign ^
-  /f "%CERT%" /p "%CERT_PASSWD%" /d "%DESC%" /du "%URL%" %TIMESTAMP_OPTION% ^
-  ..\bin\%TARGET_OS_NAME%_X64_RETAIL\PinyinTones.dll
-if not %ERRORLEVEL%==0 goto end
-endlocal
+:: Sign DLL
+set DLL_DIR=%TARGET_OS_NAME%_RETAIL
+if %1==x64 set DLL_DIR=%TARGET_OS_NAME%_X64_RETAIL
+call :sign ..\bin\%DLL_DIR%\PinyinTones.dll "%DESC%"
 
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: Now build the x86 version
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-setlocal
-pushd \
-call %BASEDIR%\bin\setenv.bat %BASEDIR% fre %TARGET_OS% x86
 popd
+set PUSHED_DIR=
 
-set CPU=i386
-set INCLUDE=C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\INCLUDE;%BASEDIR%\inc\api;%BASEDIR%\inc\crt
-set LIB=%DDK_LIB_DEST%\%CPU%;%LIB%\Crt\%CPU%;%LIB%;
-nmake nodebug=1
-if not %ERRORLEVEL%==0 goto end
-set DESC=%DESC% (32-bit)
-signtool sign ^
-  /f "%CERT%" /p "%CERT_PASSWD%" /d "%DESC%" /du "%URL%" %TIMESTAMP_OPTION% ^
-  ..\bin\%TARGET_OS_NAME%_RETAIL\PinyinTones.dll
-if not %ERRORLEVEL%==0 goto end
 endlocal
+goto :eof
+
 
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: Build MSIs from WIX
+:: Build and sign MSI
+::   %1 = Platform (x86 or x64)
+::   %2 = Suffix (e.g. 32 for PinyinTones32.msi)
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-cd ..\Setup
-candle -arch x86 -dPlatform=x86 -o ..\bin\PinyinTones32.wixobj PinyinTones.wxs 
-if not %ERRORLEVEL%==0 goto end
-candle -arch x64 -dPlatform=x64 -o ..\bin\PinyinTones64.wixobj PinyinTones.wxs 
+:build_msi
+pushd Setup
+set PUSHED_DIR=1
+
+candle -arch %1 -dPlatform=%1 -o ..\bin\PinyinTones%2.wixobj PinyinTones.wxs 
 if not %ERRORLEVEL%==0 goto end
 
-cd ..\bin
-light -ext WixUIExtension PinyinTones32.wixobj
-if not %ERRORLEVEL%==0 goto end
-light -ext WixUIExtension PinyinTones64.wixobj
+popd
+pushd bin
+set PUSHED_DIR=1
+light -ext WixUIExtension PinyinTones%2.wixobj
 if not %ERRORLEVEL%==0 goto end
 
-:: Sign both MSIs
+call :sign PinyinTones%2.msi "%DESC%"
+if exist PinyinTones%2.wixobj del PinyinTones%2.wixobj
+
+popd
+set PUSHED_DIR=
+goto :eof
+
+
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: Sign file:
+::   %1 = filename
+::   %2 = description
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:sign
 signtool sign ^
-  /f "%CERT%" /p "%CERT_PASSWD%" /d "%DESC%" /du "%URL%" %TIMESTAMP_OPTION% ^
-  PinyinTones32.msi
+  /f "%CERT%" /p "%CERT_PASSWD%" /d "%~2" /du "%URL%" %TIMESTAMP_OPTION% ^
+  %1
 if not %ERRORLEVEL%==0 goto end
+goto :eof
 
-signtool sign ^
-  /f "%CERT%" /p "%CERT_PASSWD%" /d "%DESC%" /du "%URL%" %TIMESTAMP_OPTION% ^
-  PinyinTones64.msi
-if not %ERRORLEVEL%==0 goto end
-
-if exist PinyinTones32.wixobj del PinyinTones32.wixobj
-if exist PinyinTones64.wixobj del PinyinTones64.wixobj
-
-echo.
-echo -------------------------------------
-echo Release build complete.
-echo -------------------------------------
-goto end
-
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: Terminate command script
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+ 
 :error_signing_script
 echo You must create a set-signing-cert.cmd file to provide the
 echo CERT and CERT_PASSWD environment variables.
@@ -137,5 +152,5 @@ echo This build script must be run from a DDK command prompt.
 goto end
 
 :end
-if defined %PUSHED_DIR% popd
+if defined PUSHED_DIR popd
 endlocal
