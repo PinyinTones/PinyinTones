@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010-2012 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -104,39 +104,126 @@ BOOL IsRangeCovered(TfEditCookie ec, ITfRange *pRangeTest, ITfRange *pRangeCover
 //
 // _HandleCharacterKey
 //
-// If the keystroke happens within a composition, eat the key and return S_OK.
+// Handles a keystroke that is going into a new or existing composition.
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTextService::_HandleCharacterKey(TfEditCookie ec, ITfContext *pContext, UINT wVirtKey, UINT wScanCode)
+HRESULT CTextService::_HandleCharacterKey(TfEditCookie ec,
+    ITfContext *pContext, UINT wVirtKey, UINT wScanCode)
 {
-    // Start a new composition if necessary.
-    if (!_IsComposing())
-        _StartComposition(pContext);
-
-    // Convert virtual key to character, adjusting v.
     BYTE state[256];
     GetKeyboardState(state);
+    BOOL fControlKey = state[VK_CONTROL] & 0x80;
+    BYTE fRMenuKey = state[VK_RMENU] & 0x80;
+
+    // Ignore control characters, but allow AltGr (Ctrl + RightAlt).  However,
+    // not every application passes through AltGr, so we may not get a chance
+    // to handle the character.
+    if (fControlKey && !fRMenuKey)
+    {
+        return S_OK;
+    }
+
+    // Ignore keys that PinyinTones does not handle
+    BOOL fKeyInsertable = _IsKeyInsertable(wVirtKey);
+    if (!fKeyInsertable)
+    {
+        return S_OK;
+    }
+
+    // Convert virtual key to character
     WCHAR buf[16]; 
     int numChars = ToUnicodeEx(wVirtKey, wScanCode, state, (LPWSTR)buf, 16, 0, 0);
-    WCHAR ch = buf[0];
+    switch (numChars)
+    {
+        case -1: // Dead key
+        case 0:  // No Unicode character translation
+            return S_OK;
 
-    // If a tone number was entered, then set the tone on the most recent vowel
-    if ((ch >= '1') && (ch <= '4'))
-    {
-      return _SetTone(ch, ec, pContext);
+        case 1:  // Possible Pinyin keystroke
+            return _HandleCharacter(ec, pContext, buf[0]);
+
+        default:
+            if (numChars < -1)
+            {
+                // Undefined return value
+                return E_FAIL;
+            }
+
+            // Ignore multi-character buffers, such as combining diacritics
+            return S_OK;
     }
-    // Not a tone or control character, so just insert the character
-    else
+
+    // We should never get past the switch-case
+    return E_FAIL;
+}
+
+BOOL CTextService::_IsKeyInsertable(WPARAM wVirtKey)
+{
+    // Only specific keys are inserted by PinyinTones within a composition.
+    // Other keys are ignored.
+    BOOL fHandledKey = (wVirtKey == VK_SPACE)
+        || ((wVirtKey >= L'0') && (wVirtKey <= L'9'))
+        || ((wVirtKey >= L'A') && (wVirtKey <= L'Z'))
+        || ((wVirtKey >= VK_NUMPAD0) && (wVirtKey <= VK_NUMPAD9))
+        || ((wVirtKey >= VK_MULTIPLY) && (wVirtKey <= VK_DIVIDE))
+        || ((wVirtKey >= VK_OEM_1) && (wVirtKey <= VK_OEM_3))
+        || ((wVirtKey >= VK_OEM_4) && (wVirtKey <= VK_OEM_8))
+        || (wVirtKey == VK_OEM_102)
+        || ((wVirtKey & 0x00FF) == VK_PACKET);
+    return fHandledKey;
+}
+
+// Handles a single character
+HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
+    ITfContext *pContext, WCHAR ch)
+{
+    // Start a composition if we're not already in one
+    if (!_IsComposing())
     {
-      // Except that there is no 'v' in Pinyin
-      if (ch == 'v')
+        _StartComposition(pContext);
+    }
+
+    // Handle numerals
+    if ((ch >= L'0') && (ch <= L'9'))
+    {
+        // A tone number will complete a Pinyin syllable
+        if ((ch >= L'1') && (ch <= L'4'))
+        {
+            HRESULT hrSetTone = _SetTone(ch, ec, pContext);
+            _TerminateComposition(ec, pContext);
+            return hrSetTone;
+        }
+
+        // Other numerals should be ignored.  It would be inconsistent for some
+        // numerals to show up, but not others.
+        return S_OK;
+    }
+
+    // Adjust the 'v' character, which does not exist in Pinyin
+    if (ch == L'v')
+    {
         ch = PinyinVowels::uu0;
-      else if (ch == 'V')
-        ch = PinyinVowels::UU0;
-
-      return _InsertCharacter(ch, ec, pContext);
     }
+    else if (ch == L'V')
+    {
+        ch = PinyinVowels::UU0;
+    }
+
+    // Insert character into composition
+    HRESULT hrInsert = _InsertCharacter(ch, ec, pContext);
+    if (hrInsert != S_OK)
+    {
+        return hrInsert;
+    }
+
+    // Non-Pinyin characters should terminate the composition
+    if (!_IsPinyinCharacter(ch))
+    {
+        _TerminateComposition(ec, pContext);
+    }
+
+    return S_OK;
 }
 
 // Scan an array for a character, and return the index
@@ -151,20 +238,19 @@ int CTextService::_LookupChar(WCHAR ch, WCHAR *vowels, int cbVowels)
   return -1;
 }
 
-// Used to determine which characters to process when locating the last
-// vowel combination in the composition.
-BOOL CTextService::_IsTextCharacter(WCHAR ch)
+// Determines whether a character can be used when typing a Pinyin syllable
+BOOL CTextService::_IsPinyinCharacter(WCHAR ch)
 {
-  // Characters that we'll accept:
-  //   - Alphabetic letters (including v)
-  //   - Toned and untoned Pinyin vowels
+    // Characters that we'll accept:
+    //   - Alphabetic letters (including v)
+    //   - Toned and untoned Pinyin vowels
 
-  BOOL fTextCharacter =
-    ((ch >= L'a') && (ch <= L'z')) ||
-    ((ch >= L'A') && (ch <= L'Z')) ||
-    (_LookupChar(ch, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS) > -1);
-
-  return fTextCharacter;
+    BOOL fPinyinCharacter =
+        ((ch >= L'a') && (ch <= L'z')) ||
+        ((ch >= L'A') && (ch <= L'Z')) ||
+        (_LookupChar(ch, (WCHAR*)PinyinVowels::VOWELS,
+            PinyinVowels::NUM_VOWELS) > -1);
+    return fPinyinCharacter;
 }
 
 // Find the position of the last vowel combination
@@ -178,9 +264,6 @@ void CTextService::_FindLastVowels(WCHAR* buffer, int cbBuffer, WCHAR** ppVowelF
   WCHAR* pBufferLast = buffer + cbBuffer - 1;
   for (WCHAR* p = pBufferLast; p >= buffer; p--)
   {
-    if (!_IsTextCharacter(*p))
-      break;
-
     if (_LookupChar(*p, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS) > -1)
     {
       if (*ppVowelLast == NULL)

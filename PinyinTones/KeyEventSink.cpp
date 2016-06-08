@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -29,48 +29,46 @@
 
 BOOL CTextService::_IsKeyEaten(WPARAM wParam, LPARAM lParam)
 {
-    // if the keyboard is disabled, the keys are not consumed.
+    // Do not consume keys if the keyboard is disabled or closed
     if (_IsKeyboardDisabled())
+    {
         return FALSE;
-
-    // if the keyboard is closed, the keys are not consumed.
+    }
     if (!_IsKeyboardOpen())
-        return FALSE;
-
-    // eat only keys that CKeyHandlerEditSession can hadles.
-    switch (wParam)
     {
-        case VK_LEFT:
-        case VK_RIGHT:
-        case VK_RETURN:
-        case VK_SPACE:
-            if (_IsComposing())
-                return TRUE;
+        return FALSE;
+    }
+
+    // Eat keys aggressively if we are already in a composition, as passing
+    // them through would produce unpredictable behavior in the application.
+    if (_IsComposing())
+    {
+        // Escape is passed through to cancel the composition
+        if (wParam == VK_ESCAPE)
+        {
             return FALSE;
+        }
+
+        // All other keys are eaten, including control keys.  We may just ignore
+        // them, but it's better than passing them through.
+        return TRUE;
     }
 
-    switch (wParam)
+    // Determine state of modifier keys
+    BOOL fControlKey = GetKeyState(VK_CONTROL) & 0x80;
+    BOOL fMenuKey = GetKeyState(VK_MENU) & 0x80;
+
+    // A composition can only be begun by keys in the Pinyin alphabet
+    if ((wParam >= 'A') && (wParam <= 'Z') && !fControlKey && !fMenuKey)
     {
-      case VK_BACK:
-      case VK_ESCAPE:
-        return FALSE;
+        return TRUE;
     }
 
-    // Let control chracters through
-    BYTE state[256];
-    GetKeyboardState(state);
-    if (state[VK_CONTROL] & 0x80) return FALSE;
-    if (state[VK_MENU] & 0x80) return FALSE;
-    
-    // Otherwise, we will eat any keys that produce a Unicode character
-    WCHAR buf[16]; 
-    UINT wScanCode = (lParam & 0x0000ff00) >> 8;
-    int numChars = ToUnicodeEx((UINT)wParam, wScanCode, state, (LPWSTR)buf, 16, 0, 0);
-    BOOL fEatKey = (numChars > 0);
-    
-    return fEatKey;
+    // Other keys are passed through to be handled by the application.  This
+    // avoids interfering with user actions, such as tabbing through a form
+    // or typing numbers.
+    return FALSE;
 }
-
 
 //+---------------------------------------------------------------------------
 //
