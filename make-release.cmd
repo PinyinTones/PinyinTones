@@ -74,8 +74,7 @@ set CPU=%2
 
 :: Include path:
 ::   - Windows SDK for win32.mak
-::   - Visual Studio 10.0 for excpt.h
-set INCLUDE=C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\INCLUDE;%BASEDIR%\inc\api;%BASEDIR%\inc\crt
+set INCLUDE=C:\Program Files\Microsoft SDKs\Windows\v7.1\INCLUDE;%BASEDIR%\inc\api;%BASEDIR%\inc\crt
 
 
 :: The DDK's setenv.cmd doesn't set LIB properly.  We have to add the
