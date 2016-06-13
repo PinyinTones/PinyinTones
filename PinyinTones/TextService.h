@@ -81,7 +81,7 @@ public:
     HRESULT _SetKeyboardOpen(BOOL fOpen);
 
     // functions for the composition object.
-    void _StartComposition(ITfContext *pContext);
+    HRESULT _StartComposition(ITfContext *pContext);
     void _EndComposition(ITfContext *pContext);
     void _TerminateComposition(TfEditCookie ec, ITfContext *pContext);
     BOOL _IsComposing();

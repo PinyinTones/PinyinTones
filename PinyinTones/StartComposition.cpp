@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -54,40 +54,50 @@ STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
     HRESULT hr = E_FAIL;
 
     // A special interface is required to insert text at the selection
-    if (_pContext->QueryInterface(IID_ITfInsertAtSelection, (void **)&pInsertAtSelection) != S_OK)
+    hr = _pContext->QueryInterface(IID_ITfInsertAtSelection,
+        (void **)&pInsertAtSelection);
+    if (hr != S_OK)
     {
         goto Exit;
     }
 
     // insert the text
-    if (pInsertAtSelection->InsertTextAtSelection(ec, TF_IAS_QUERYONLY, NULL, 0, &pRangeInsert) != S_OK)
+    hr = pInsertAtSelection->InsertTextAtSelection(ec,
+        TF_IAS_QUERYONLY, NULL, 0, &pRangeInsert);
+    if (hr != S_OK)
     {
         goto Exit;
     }
 
     // get an interface on the context to deal with compositions
-    if (_pContext->QueryInterface(IID_ITfContextComposition, (void **)&pContextComposition) != S_OK)
+    hr = _pContext->QueryInterface(IID_ITfContextComposition,
+        (void **)&pContextComposition);
+    if (hr != S_OK)
     {
         goto Exit;
     }
 
     // start the new composition
-    if ((pContextComposition->StartComposition(ec, pRangeInsert, _pTextService, &pComposition) == S_OK) && (pComposition != NULL))
+    hr = pContextComposition->StartComposition(ec,
+        pRangeInsert, _pTextService, &pComposition);
+    if ((hr != S_OK) || (pComposition == NULL))
     {
-        // Store the pointer of this new composition object in the instance 
-        // of the CTextService class. So this instance of the CTextService 
-        // class can know now it is in the composition stage.
-        _pTextService->_SetComposition(pComposition);
-
-        // 
-        //  set selection to the adjusted range
-        // 
-        TF_SELECTION tfSelection;
-        tfSelection.range = pRangeInsert;
-        tfSelection.style.ase = TF_AE_NONE;
-        tfSelection.style.fInterimChar = FALSE;
-        _pContext->SetSelection(ec, 1, &tfSelection);
+        goto Exit;
     }
+
+    // Store the pointer of this new composition object in the instance 
+    // of the CTextService class. So this instance of the CTextService 
+    // class can know now it is in the composition stage.
+    _pTextService->_SetComposition(pComposition);
+
+    // 
+    //  set selection to the adjusted range
+    // 
+    TF_SELECTION tfSelection;
+    tfSelection.range = pRangeInsert;
+    tfSelection.style.ase = TF_AE_NONE;
+    tfSelection.style.fInterimChar = FALSE;
+    hr = _pContext->SetSelection(ec, 1, &tfSelection);
 
 Exit:
     if (pContextComposition != NULL)
@@ -99,29 +109,45 @@ Exit:
     if (pInsertAtSelection != NULL)
         pInsertAtSelection->Release();
 
-    return S_OK;
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
 //
 // _StartComposition
 //
-// this starts the new composition at the selection of the current 
-// focus context.
+// Starts the new composition at the selection of the current focus context
+//
 //----------------------------------------------------------------------------
 
-void CTextService::_StartComposition(ITfContext *pContext)
+HRESULT CTextService::_StartComposition(ITfContext *pContext)
 {
     CStartCompositionEditSession *pStartCompositionEditSession;
 
     if (pStartCompositionEditSession = new CStartCompositionEditSession(this, pContext))
     {
         HRESULT hr;
-        // A synchronus document write lock is required.
-        // the CStartCompositionEditSession will do all the work when the
-        // CStartCompositionEditSession::DoEditSession method is called by the context
-        pContext->RequestEditSession(_tfClientId, pStartCompositionEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
+        HRESULT hrSession;
 
+        // A synchronous document write lock is required.
+        // The CStartCompositionEditSession will do all the work when the
+        // CStartCompositionEditSession::DoEditSession method is called by the context
+        hr = pContext->RequestEditSession(
+            _tfClientId,
+            pStartCompositionEditSession,
+            TF_ES_SYNC | TF_ES_READWRITE,
+            &hrSession);
+
+        if (hr != S_OK)
+        {
+            return hr;
+        }
+        if (hrSession != S_OK)
+        {
+            return hrSession;
+        }
         pStartCompositionEditSession->Release();
     }
+
+    return S_OK;
 }

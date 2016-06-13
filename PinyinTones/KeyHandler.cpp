@@ -181,7 +181,11 @@ HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
     // Start a composition if we're not already in one
     if (!_IsComposing())
     {
-        _StartComposition(pContext);
+        HRESULT hr = _StartComposition(pContext);
+        if (hr != S_OK)
+        {
+            return hr;
+        }
     }
 
     // Handle numerals
