@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010-2012 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -51,5 +51,8 @@ extern const GUID c_guidLangBarIcon;
 extern const GUID c_guidLangBarItemButton;
 
 extern const GUID c_guidDisplayAttributeInput;
+
+#define EXIT_IF_FAILED(hr) if (FAILED(hr)) { goto Exit; }
+#define EXIT_IF(f) if (f) { goto Exit; }
 
 #endif // GLOBALS_H

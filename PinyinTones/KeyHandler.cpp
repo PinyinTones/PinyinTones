@@ -57,15 +57,14 @@ STDAPI CKeyHandlerEditSession::DoEditSession(TfEditCookie ec)
 {
     switch (_wVirtKey)
     {
-        case VK_LEFT:
-        case VK_RIGHT:
-            return _pTextService->_HandleArrowKey(ec, _pContext, _wVirtKey);
+        case VK_BACK:
+            return _pTextService->_HandleBackspaceKey(ec, _pContext);
 
         case VK_RETURN:
             return _pTextService->_HandleReturnKey(ec, _pContext);
 
         default:
-            return _pTextService->_HandleCharacterKey(ec, _pContext, _wVirtKey, _wScanCode);
+            return _pTextService->_HandleKey(ec, _pContext, _wVirtKey, _wScanCode);
             break;
     }
 
@@ -102,13 +101,13 @@ BOOL IsRangeCovered(TfEditCookie ec, ITfRange *pRangeTest, ITfRange *pRangeCover
 
 //+---------------------------------------------------------------------------
 //
-// _HandleCharacterKey
+// _HandleKey
 //
 // Handles a keystroke that is going into a new or existing composition.
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTextService::_HandleCharacterKey(TfEditCookie ec,
+HRESULT CTextService::_HandleKey(TfEditCookie ec,
     ITfContext *pContext, UINT wVirtKey, UINT wScanCode)
 {
     BYTE state[256];
@@ -453,60 +452,80 @@ HRESULT CTextService::_HandleReturnKey(TfEditCookie ec, ITfContext *pContext)
 
 //+---------------------------------------------------------------------------
 //
-// _HandleArrowKey
-//
-// Update the selection within a composition.
+// _HandleBackspaceKey
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTextService::_HandleArrowKey(TfEditCookie ec, ITfContext *pContext, WPARAM wParam)
+HRESULT CTextService::_HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext)
 {
+    HRESULT hr = S_OK;
     ITfRange *pRangeComposition;
     LONG cch;
-    BOOL fEqual;
+    BOOL fResult;
     TF_SELECTION tfSelection;
     ULONG cFetched;
 
-    // get the selection
-    if (pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched) != S_OK ||
-        cFetched != 1)
+    // Get the composition range and the current selection
+    hr = _pComposition->GetRange(&pRangeComposition);
+    EXIT_IF_FAILED(hr);
+    hr = pContext->GetSelection(ec,
+        TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched);
+    EXIT_IF_FAILED(hr);
+
+    // Ignore Backspace if the cursor is at the start of the composition.
+    // This should never happen, since cursor movement keys are ignored and
+    // empty compositions are terminated.
+    hr = tfSelection.range->IsEqualEnd(ec,
+        pRangeComposition, TF_ANCHOR_START, &fResult);
+    EXIT_IF_FAILED(hr);
+    EXIT_IF(fResult);
+
+    // Use the current selection as the deletion range.  Move the start anchor
+    // for empty ranges, so that one character will be deleted.
+    ITfRange* pRangeToDelete;
+    hr = tfSelection.range->Clone(&pRangeToDelete);
+    EXIT_IF_FAILED(hr);
+    hr = pRangeToDelete->IsEmpty(ec, &fResult);
+    EXIT_IF_FAILED(hr);
+    if (fResult)
     {
-        // no selection?
-        return S_OK; // eat the keystroke
+        hr = pRangeToDelete->ShiftStart(ec, -1, &cch, NULL);
+        EXIT_IF_FAILED(hr);
     }
 
-    // get the composition range
-    if (_pComposition->GetRange(&pRangeComposition) != S_OK)
-        goto Exit;
+    // Move the cursor to the start of the deletion range, so that it will
+    // remain valid after the text is deleted.
+    hr = tfSelection.range->ShiftStartToRange(ec,
+        pRangeToDelete, TF_ANCHOR_START);
+    EXIT_IF_FAILED(hr);
+    hr = tfSelection.range->Collapse(ec, TF_ANCHOR_START);
+    EXIT_IF_FAILED(hr);
+    hr = pContext->SetSelection(ec, 1, &tfSelection);
+    EXIT_IF_FAILED(hr);
 
-    // adjust the selection
-    if (wParam == VK_LEFT)
+    // Remove text from the deletion range
+    hr = pRangeToDelete->SetText(ec, TF_ST_CORRECTION, NULL, 0);
+    EXIT_IF_FAILED(hr);
+
+    // Terminate the remaining composition if it is now empty
+    hr = pRangeComposition->IsEmpty(ec, &fResult);
+    EXIT_IF_FAILED(hr);
+    if (fResult)
     {
-        if (tfSelection.range->IsEqualStart(ec, pRangeComposition, TF_ANCHOR_START, &fEqual) == S_OK &&
-            !fEqual)
-        {
-            tfSelection.range->ShiftStart(ec, -1, &cch, NULL);
-        }
-        tfSelection.range->Collapse(ec, TF_ANCHOR_START);
+        _TerminateComposition(ec, pContext);
     }
-    else
-    {
-        // VK_RIGHT
-        if (tfSelection.range->IsEqualEnd(ec, pRangeComposition, TF_ANCHOR_END, &fEqual) == S_OK &&
-            !fEqual)
-        {
-            tfSelection.range->ShiftEnd(ec, +1, &cch, NULL);
-        }
-        tfSelection.range->Collapse(ec, TF_ANCHOR_END);
-    }
-
-    pContext->SetSelection(ec, 1, &tfSelection);
-
-    pRangeComposition->Release();
 
 Exit:
-    tfSelection.range->Release();
-    return S_OK; // eat the keystroke
+    if (pRangeComposition != NULL)
+    {
+        pRangeComposition->Release();
+    }
+
+    if (tfSelection.range != NULL)
+    {
+        tfSelection.range->Release();
+    }
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
