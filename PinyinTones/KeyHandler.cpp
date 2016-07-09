@@ -57,11 +57,14 @@ STDAPI CKeyHandlerEditSession::DoEditSession(TfEditCookie ec)
 {
     switch (_wVirtKey)
     {
-        case VK_BACK:
-            return _pTextService->_HandleBackspaceKey(ec, _pContext);
-
         case VK_RETURN:
             return _pTextService->_HandleReturnKey(ec, _pContext);
+
+        case VK_ESCAPE:
+            return _pTextService->_HandleEscapeKey(ec, _pContext);
+
+        case VK_BACK:
+            return _pTextService->_HandleBackspaceKey(ec, _pContext);
 
         default:
             return _pTextService->_HandleKey(ec, _pContext, _wVirtKey, _wScanCode);
@@ -448,6 +451,41 @@ HRESULT CTextService::_HandleReturnKey(TfEditCookie ec, ITfContext *pContext)
     // just terminate the composition
     _TerminateComposition(ec, pContext);
     return S_OK;
+}
+
+//+---------------------------------------------------------------------------
+//
+// _HandleEscapeKey
+//
+// Cancels the composition.
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTextService::_HandleEscapeKey(TfEditCookie ec, ITfContext *pContext)
+{
+    HRESULT hr = S_OK;
+    ITfRange *pRangeComposition;
+
+    // Get the composition range
+    hr = _pComposition->GetRange(&pRangeComposition);
+    EXIT_IF_FAILED(hr);
+
+    // Delete the text in the composition
+    hr = pRangeComposition->SetText(ec, TF_ST_CORRECTION, NULL, 0);
+    EXIT_IF_FAILED(hr);
+
+    // Terminate the empty composition.  Some applications will treat this as
+    // an insertion and set the dirty flag on the document.  This appears to be
+    // unavoidable, as the Microsoft Pinyin IME has the same problem.
+    _TerminateComposition(ec, pContext);
+
+Exit:
+    if (pRangeComposition != NULL)
+    {
+        pRangeComposition->Release();
+    }
+
+    return hr;
 }
 
 //+---------------------------------------------------------------------------

@@ -39,18 +39,11 @@ BOOL CTextService::_IsKeyEaten(WPARAM wParam, LPARAM lParam)
         return FALSE;
     }
 
-    // Eat keys aggressively if we are already in a composition, as passing
-    // them through would produce unpredictable behavior in the application.
+    // Eat all keys when we are in a composition.  Control keys can cause
+    // unpredictable behavior if they are passed through to the application,
+    // so it is better to ignore them.
     if (_IsComposing())
     {
-        // Escape is passed through to cancel the composition
-        if (wParam == VK_ESCAPE)
-        {
-            return FALSE;
-        }
-
-        // All other keys are eaten, including control keys.  We may just ignore
-        // them, but it's better than passing them through.
         return TRUE;
     }
 

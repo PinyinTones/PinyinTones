@@ -89,8 +89,9 @@ public:
 
     // key event handlers.
     HRESULT _HandleKey(TfEditCookie ec, ITfContext *pContext, UINT wVirtKey, UINT wScanCode);
-    HRESULT _HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext);
     HRESULT _HandleReturnKey(TfEditCookie ec, ITfContext *pContext);
+    HRESULT _HandleEscapeKey(TfEditCookie ec, ITfContext *pContext);
+    HRESULT _HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext);
     HRESULT _InvokeKeyHandler(ITfContext *pContext, WPARAM wParam, LPARAM lParam);
 
     void _ClearCompositionDisplayAttributes(TfEditCookie ec, ITfContext *pContext);
