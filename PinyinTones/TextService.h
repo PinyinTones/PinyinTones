@@ -120,6 +120,10 @@ private:
     // utility function for KeyEventSink
     BOOL _IsKeyEaten(WPARAM wParam, LPARAM lParam);
 
+    // Functions for the composition object
+    void _CleanupComposition(TfEditCookie ec, ITfContext *pContext,
+        BOOL fEndComposition);
+
     // Utility functions to insert characters and add tones
     BOOL _IsKeyInsertable(WPARAM wVirtKey);
     HRESULT _HandleCharacter(TfEditCookie ec, ITfContext *pContext,

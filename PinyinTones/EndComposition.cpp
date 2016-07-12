@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -52,14 +52,32 @@ public:
 
 void CTextService::_TerminateComposition(TfEditCookie ec, ITfContext *pContext)
 {
+    _CleanupComposition(ec, pContext, TRUE);
+}
+
+//+---------------------------------------------------------------------------
+//
+// _CleanupComposition
+//
+// Cleans up a composition that is being terminated.
+//
+//----------------------------------------------------------------------------
+
+void CTextService::_CleanupComposition(TfEditCookie ec, ITfContext *pContext,
+    BOOL fEndComposition)
+{
     if (_pComposition != NULL)
     {
-        //
-        // remove the display attribute from the composition range.
-        //
+        // Remove the display attribute from the composition range
         _ClearCompositionDisplayAttributes(ec, pContext);
 
-        _pComposition->EndComposition(ec);
+        // EndComposition may already have been called
+        if (fEndComposition)
+        {
+            _pComposition->EndComposition(ec);
+        }
+
+        // Release the cached copy of the composition
         _pComposition->Release();
         _pComposition = NULL;
     }
@@ -75,11 +93,16 @@ void CTextService::_EndComposition(ITfContext *pContext)
 {
     CEndCompositionEditSession *pEditSession;
     HRESULT hr;
+    HRESULT hrSession;
 
     if (pEditSession = new CEndCompositionEditSession(this, pContext))
     {
-        pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hr);
+        hr = pContext->RequestEditSession(
+            _tfClientId,
+            pEditSession,
+            TF_ES_ASYNCDONTCARE | TF_ES_READWRITE,
+            &hrSession);
+
         pEditSession->Release();
     }
 }
-

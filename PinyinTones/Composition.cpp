@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -31,15 +31,31 @@
 
 STDAPI CTextService::OnCompositionTerminated(TfEditCookie ecWrite, ITfComposition *pComposition)
 {
+    HRESULT hr = S_OK;
+    ITfRange* pRange = nullptr;
+    ITfContext* pContext = nullptr;
 
-    // releae our cached composition
-    if (_pComposition != NULL)
+    // Clean up the composition
+    if (_pComposition)
     {
-        _pComposition->Release();
-        _pComposition = NULL;
+        hr = _pComposition->GetRange(&pRange);
+        EXIT_IF_FAILED(hr);
+        hr = pRange->GetContext(&pContext);
+        EXIT_IF_FAILED(hr);
+
+        _CleanupComposition(ecWrite, pContext, FALSE);
     }
 
-    return S_OK;
+Exit:
+    if (pContext)
+    {
+        pContext->Release();
+    }
+    if (pRange)
+    {
+        pRange->Release();
+    }
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
