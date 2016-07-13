@@ -160,6 +160,14 @@ HRESULT CTextService::_HandleKey(TfEditCookie ec,
     return E_FAIL;
 }
 
+//+---------------------------------------------------------------------------
+//
+// _IsKeyInsertable
+//
+// Returns TRUE if the key can be inserted into a composition; FALSE otherwise.
+//
+//----------------------------------------------------------------------------
+
 BOOL CTextService::_IsKeyInsertable(WPARAM wVirtKey)
 {
     // Only specific keys are inserted by PinyinTones within a composition.
@@ -176,7 +184,14 @@ BOOL CTextService::_IsKeyInsertable(WPARAM wVirtKey)
     return fHandledKey;
 }
 
-// Handles a single character
+//+---------------------------------------------------------------------------
+//
+// _HandleCharacter
+//
+// Handles a single character that is being inserted into a composition.
+//
+//----------------------------------------------------------------------------
+
 HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
     ITfContext *pContext, WCHAR ch)
 {
@@ -232,19 +247,33 @@ HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
     return S_OK;
 }
 
-// Scan an array for a character, and return the index
+//+---------------------------------------------------------------------------
+//
+// _LookupChar
+//
+// Returns the index of a character in an array.
+//
+//----------------------------------------------------------------------------
+
 int CTextService::_LookupChar(WCHAR ch, WCHAR *vowels, int cbVowels)
 {
-  WCHAR *pVowelsLim = vowels + cbVowels;
-  for (WCHAR* p = vowels; p < pVowelsLim; p++)
-  {
-    if (*p == ch)
-      return (int)(p - vowels);
-  }
-  return -1;
+    WCHAR *pVowelsLim = vowels + cbVowels;
+    for (WCHAR* p = vowels; p < pVowelsLim; p++)
+    {
+        if (*p == ch)
+            return (int)(p - vowels);
+    }
+    return -1;
 }
 
-// Determines whether a character can be used when typing a Pinyin syllable
+//+---------------------------------------------------------------------------
+//
+// _IsPinyinCharacter
+//
+// Determines whether a character can be used in a Pinyin syllable.
+//
+//----------------------------------------------------------------------------
+
 BOOL CTextService::_IsPinyinCharacter(WCHAR ch)
 {
     // Characters that we'll accept:
@@ -259,141 +288,183 @@ BOOL CTextService::_IsPinyinCharacter(WCHAR ch)
     return fPinyinCharacter;
 }
 
-// Find the position of the last vowel combination
+//+---------------------------------------------------------------------------
+//
+// _FindLastVowels
+//
+// Finds the last vowel or vowel combination in the buffer.
+//
+//----------------------------------------------------------------------------
+
 void CTextService::_FindLastVowels(WCHAR* buffer, int cbBuffer, WCHAR** ppVowelFirst, WCHAR** ppVowelLast)
 {
-  // Initialize to invalid values
-  *ppVowelFirst = NULL;
-  *ppVowelLast = NULL;
+    // Initialize to invalid values
+    *ppVowelFirst = NULL;
+    *ppVowelLast = NULL;
 
-  // Search from the end
-  WCHAR* pBufferLast = buffer + cbBuffer - 1;
-  for (WCHAR* p = pBufferLast; p >= buffer; p--)
-  {
-    if (_LookupChar(*p, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS) > -1)
+    // Search from the end
+    WCHAR* pBufferLast = buffer + cbBuffer - 1;
+    for (WCHAR* p = pBufferLast; p >= buffer; p--)
     {
-      if (*ppVowelLast == NULL)
-      {
-        // Found the last vowel in the buffer
-        *ppVowelLast = p;
-        *ppVowelFirst = p;
-      }
-      else if (p == (*ppVowelFirst - 1))
-      {
-        // Found an adjacent vowel, so expand the vowel combination
-        *ppVowelFirst = p;
-      }
-      else
-      {
-        // We really shouldn't ever get here, but quit if we do
-        break;
-      }
+        // Vowel found
+        if (_LookupChar(*p, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS) > -1)
+        {
+            if (*ppVowelLast == NULL)
+            {
+                // Found the last vowel in the buffer
+                *ppVowelLast = p;
+                *ppVowelFirst = p;
+            }
+            else if (p == (*ppVowelFirst - 1))
+            {
+                // Found an adjacent vowel, so expand the vowel combination
+                *ppVowelFirst = p;
+            }
+            else
+            {
+                // We really shouldn't ever get here, but quit if we do
+                break;
+            }
+        }
+        // Not a vowel
+        else if (*ppVowelLast >= buffer)
+        {
+            // Quit if we've already found a vowel combination, otherwise keep
+            // searching for vowels.
+            break;
+        }
     }
-    else if (*ppVowelLast >= buffer)
-    {
-      // Quit if we've already have a vowel combination, otherwise keep
-      // searching for vowels.
-      break;
-    }
-  }  
 }
+
+//+---------------------------------------------------------------------------
+//
+// _RemoveTone
+//
+// Removes the tone mark from a Pinyin vowel.
+//
+//----------------------------------------------------------------------------
 
 void CTextService::_RemoveTone(WCHAR* pVowelFirst, WCHAR* pVowelLast)
 {
-  for (WCHAR* p = pVowelFirst; p <= pVowelLast ; p++)
-  {
-    int iVowel = _LookupChar(*p, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS);
-    if (iVowel > -1)
+    for (WCHAR* p = pVowelFirst; p <= pVowelLast; p++)
     {
-      // Arranged in multiples of five: untoned vowel, then four tones.
-      *p = PinyinVowels::VOWELS[iVowel - iVowel % 5];
+        int iVowel = _LookupChar(*p, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS);
+        if (iVowel > -1)
+        {
+            // Arranged in multiples of five: untoned vowel, then four tones.
+            *p = PinyinVowels::VOWELS[iVowel - iVowel % 5];
+        }
     }
-  }
 }
+
+//+---------------------------------------------------------------------------
+//
+// _SetTone
+//
+// Sets the tone mark on a Pinyin vowel or vowel combination.
+//
+//----------------------------------------------------------------------------
 
 void CTextService::_SetTone(WCHAR* pVowelFirst, WCHAR* pVowelLast, WCHAR ch)
 {
-  if (pVowelFirst == NULL)
-    return;
+    if (pVowelFirst == NULL)
+        return;
 
-  // Remove tone before setting it (we don't want to have to account for
-  // every tone in the vowel combination logic).
-  _RemoveTone(pVowelFirst, pVowelLast);
+    // Remove tone before setting it (we don't want to have to account for
+    // every tone in the vowel combination logic).
+    _RemoveTone(pVowelFirst, pVowelLast);
 
-  // Determine which vowel in the combination gets the tone.
-  // Rules are as given at: http://www.pinyin.info/rules/where.html
-  WCHAR* pToneVowel = NULL;
-  for (WCHAR* p = pVowelLast; p >= pVowelFirst; p--)
-  {
-    // a and e always get the tone in a combination
-    if ((*p == 'a') || (*p == 'A') || (*p == 'e') || (*p == 'E'))
+    // Determine which vowel in the combination gets the tone.
+    // Rules are as given at: http://www.pinyin.info/rules/where.html
+    WCHAR* pToneVowel = NULL;
+    for (WCHAR* p = pVowelLast; p >= pVowelFirst; p--)
     {
-      pToneVowel = p;
-      break;
+        // a and e always get the tone in a combination
+        if ((*p == 'a') || (*p == 'A') || (*p == 'e') || (*p == 'E'))
+        {
+            pToneVowel = p;
+            break;
+        }
+        // o gets the tone in an ou combination
+        else if ((p > pVowelFirst) && ((*p == 'u') || (*p == 'U')))
+        {
+            WCHAR* pPred = p - 1;
+            if ((*pPred == 'o') || (*pPred == 'O'))
+            {
+                pToneVowel = pPred;
+                break;
+            }
+        }
     }
-    // o gets the tone in an ou combination
-    else if ((p > pVowelFirst) && ((*p == 'u') || (*p == 'U')))
+
+    // In all other cases, the tone mark goes on the last vowel.
+    if (pToneVowel == NULL)
+        pToneVowel = pVowelLast;
+
+    // Place tone over the target vowel
+    int iVowel = _LookupChar(*pToneVowel, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS);
+    if ((iVowel > -1) && (iVowel % 5 == 0))
     {
-      WCHAR* pPred = p - 1;
-      if ((*pPred == 'o') || (*pPred == 'O'))
-      {
-        pToneVowel = pPred;
-        break;
-      }
+        int iTone = ch - '0';
+        *pToneVowel = PinyinVowels::VOWELS[iVowel + iTone];
     }
-  }
-
-  // In all other cases, the tone mark goes on the last vowel.
-  if (pToneVowel == NULL)
-    pToneVowel = pVowelLast;
-
-  // Place tone over the target vowel
-  int iVowel = _LookupChar(*pToneVowel, (WCHAR*)PinyinVowels::VOWELS, PinyinVowels::NUM_VOWELS);
-  if ((iVowel > -1) && (iVowel % 5 == 0))
-  {
-    int iTone = ch - '0';
-    *pToneVowel = PinyinVowels::VOWELS[iVowel + iTone];
-  }
 }
+
+//+---------------------------------------------------------------------------
+//
+// _SetTone
+//
+// Sets the tone mark on the last vowel or vowel combination in the current
+// composition.
+//
+//----------------------------------------------------------------------------
 
 HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
 {
-  ITfRange *pRangeComposition;
+    ITfRange *pRangeComposition;
 
-  if (_pComposition->GetRange(&pRangeComposition) != S_OK)
-    return S_FALSE;
+    if (_pComposition->GetRange(&pRangeComposition) != S_OK)
+        return S_FALSE;
 
-  // Find the character to put a tone over
-  const int MAX_COMPOSITION_LENGTH = 1024;
-  WCHAR buffer[MAX_COMPOSITION_LENGTH];
-  ULONG cbBuffer;
-  HRESULT hr;
-  hr = pRangeComposition->GetText(ec, 0, buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
-  if (hr != S_OK)
-    return S_FALSE;
+    // Find the character to put a tone over
+    const int MAX_COMPOSITION_LENGTH = 1024;
+    WCHAR buffer[MAX_COMPOSITION_LENGTH];
+    ULONG cbBuffer;
+    HRESULT hr;
+    hr = pRangeComposition->GetText(ec, 0, buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
+    if (hr != S_OK)
+        return S_FALSE;
 
-  // Locate the last vowel combination
-  WCHAR* pVowelFirst = NULL;
-  WCHAR* pVowelLast = NULL;
-  _FindLastVowels(buffer, cbBuffer, &pVowelFirst, &pVowelLast);
-  _SetTone(pVowelFirst, pVowelLast, ch);
+    // Locate the last vowel combination
+    WCHAR* pVowelFirst = NULL;
+    WCHAR* pVowelLast = NULL;
+    _FindLastVowels(buffer, cbBuffer, &pVowelFirst, &pVowelLast);
+    _SetTone(pVowelFirst, pVowelLast, ch);
 
-  // Update the selection point to just after the inserted text
-  TF_SELECTION tfSelection;
-  ULONG cFetched;
-  if (pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched) != S_OK || cFetched != 1)
-    goto Exit;
+    // Update the selection point to just after the inserted text
+    TF_SELECTION tfSelection;
+    ULONG cFetched;
+    if (pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched) != S_OK || cFetched != 1)
+        goto Exit;
 
-  pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
-  tfSelection.range->Collapse(ec, TF_ANCHOR_END);
-  pContext->SetSelection(ec, 1, &tfSelection);
-  _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
-  tfSelection.range->Release();
+    pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
+    tfSelection.range->Collapse(ec, TF_ANCHOR_END);
+    pContext->SetSelection(ec, 1, &tfSelection);
+    _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
+    tfSelection.range->Release();
   
 Exit:
-  if (pRangeComposition) pRangeComposition->Release();
-  return S_OK;
+    if (pRangeComposition) pRangeComposition->Release();
+    return S_OK;
 }
+
+//+---------------------------------------------------------------------------
+//
+// _InsertCharacter
+//
+// Inserts the character into the composition.
+//
+//----------------------------------------------------------------------------
 
 HRESULT CTextService::_InsertCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
 {

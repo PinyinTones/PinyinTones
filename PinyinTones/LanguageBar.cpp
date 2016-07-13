@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -44,21 +44,21 @@ static WCHAR c_szMenuItemDescription0[] = L"About ...";
 // About dialog callback
 //----------------------------------------------------------------------------
 
- 
-BOOL CALLBACK DeleteItemProc(HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam) 
-{ 
-  switch (message) 
-  { 
-    case WM_COMMAND: 
-      switch (LOWORD(wParam)) 
-      { 
-        case IDOK: 
-          EndDialog(hwndDlg, wParam); 
-          return TRUE; 
-      } 
-  } 
-  return FALSE; 
-} 
+
+BOOL CALLBACK DeleteItemProc(HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+        case WM_COMMAND:
+            switch (LOWORD(wParam))
+            {
+                case IDOK:
+                    EndDialog(hwndDlg, wParam);
+                    return TRUE;
+            }
+    }
+    return FALSE;
+}
 
 
 //+---------------------------------------------------------------------------
@@ -298,17 +298,17 @@ STDAPI CLangBarItemButton::InitMenu(ITfMenu *pMenu)
 
 STDAPI CLangBarItemButton::OnMenuSelect(UINT wID)
 {
-  //
-  // This is callback when the menu item is selected.
-  //
-  switch (wID)
-  {
+    //
+    // This is callback when the menu item is selected.
+    //
+    switch (wID)
+    {
     case MENUITEM_INDEX_0:
-      DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUT), 0, (DLGPROC)DeleteItemProc);
-      break;
-  }
+        DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUT), 0, (DLGPROC)DeleteItemProc);
+        break;
+    }
 
-  return S_OK;
+    return S_OK;
 }
 
 //+---------------------------------------------------------------------------
