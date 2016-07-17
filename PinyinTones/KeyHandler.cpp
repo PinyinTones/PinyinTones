@@ -421,19 +421,20 @@ void CTextService::_SetTone(WCHAR* pVowelFirst, WCHAR* pVowelLast, WCHAR ch)
 
 HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
 {
-    ITfRange *pRangeComposition;
+    HRESULT hr = S_OK;
+    ITfRange *pRangeComposition = nullptr;
+    TF_SELECTION tfSelection;
+    tfSelection.range = nullptr;
 
-    if (_pComposition->GetRange(&pRangeComposition) != S_OK)
-        return S_FALSE;
+    hr = _pComposition->GetRange(&pRangeComposition);
+    EXIT_IF_FAILED_WITH(hr, S_FALSE);
 
     // Find the character to put a tone over
     const int MAX_COMPOSITION_LENGTH = 1024;
     WCHAR buffer[MAX_COMPOSITION_LENGTH];
     ULONG cbBuffer;
-    HRESULT hr;
     hr = pRangeComposition->GetText(ec, 0, buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
-    if (hr != S_OK)
-        return S_FALSE;
+    EXIT_IF_FAILED_WITH(hr, S_FALSE);
 
     // Locate the last vowel combination
     WCHAR* pVowelFirst = NULL;
@@ -442,20 +443,26 @@ HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
     _SetTone(pVowelFirst, pVowelLast, ch);
 
     // Update the selection point to just after the inserted text
-    TF_SELECTION tfSelection;
     ULONG cFetched;
-    if (pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched) != S_OK || cFetched != 1)
-        goto Exit;
+    hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched);
+    EXIT_IF_FAILED_WITH(hr, S_FALSE);
+    EXIT_IF_WITH(cFetched != 1, S_FALSE);
 
     pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
     tfSelection.range->Collapse(ec, TF_ANCHOR_END);
     pContext->SetSelection(ec, 1, &tfSelection);
     _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
-    tfSelection.range->Release();
-  
+
 Exit:
-    if (pRangeComposition) pRangeComposition->Release();
-    return S_OK;
+    if (pRangeComposition)
+    {
+        pRangeComposition->Release();
+    }
+    if (tfSelection.range)
+    {
+        tfSelection.range->Release();
+    }
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
@@ -535,7 +542,7 @@ HRESULT CTextService::_HandleReturnKey(TfEditCookie ec, ITfContext *pContext)
 HRESULT CTextService::_HandleEscapeKey(TfEditCookie ec, ITfContext *pContext)
 {
     HRESULT hr = S_OK;
-    ITfRange *pRangeComposition;
+    ITfRange *pRangeComposition = nullptr;
 
     // Get the composition range
     hr = _pComposition->GetRange(&pRangeComposition);
@@ -551,11 +558,10 @@ HRESULT CTextService::_HandleEscapeKey(TfEditCookie ec, ITfContext *pContext)
     _TerminateComposition(ec, pContext);
 
 Exit:
-    if (pRangeComposition != NULL)
+    if (pRangeComposition)
     {
         pRangeComposition->Release();
     }
-
     return hr;
 }
 
@@ -567,11 +573,16 @@ Exit:
 
 HRESULT CTextService::_HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext)
 {
+    // Return value and COM pointers
     HRESULT hr = S_OK;
-    ITfRange *pRangeComposition;
+    ITfRange *pRangeComposition = nullptr;
+    TF_SELECTION tfSelection;
+    tfSelection.range = nullptr;
+    ITfRange* pRangeToDelete = nullptr;
+
+    // Other local variables
     LONG cch;
     BOOL fResult;
-    TF_SELECTION tfSelection;
     ULONG cFetched;
 
     // Get the composition range and the current selection
@@ -591,7 +602,6 @@ HRESULT CTextService::_HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext)
 
     // Use the current selection as the deletion range.  Move the start anchor
     // for empty ranges, so that one character will be deleted.
-    ITfRange* pRangeToDelete;
     hr = tfSelection.range->Clone(&pRangeToDelete);
     EXIT_IF_FAILED(hr);
     hr = pRangeToDelete->IsEmpty(ec, &fResult);
@@ -625,14 +635,17 @@ HRESULT CTextService::_HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext)
     }
 
 Exit:
-    if (pRangeComposition != NULL)
+    if (pRangeComposition)
     {
         pRangeComposition->Release();
     }
-
-    if (tfSelection.range != NULL)
+    if (tfSelection.range)
     {
         tfSelection.range->Release();
+    }
+    if (pRangeToDelete)
+    {
+        pRangeToDelete->Release();
     }
     return hr;
 }
@@ -666,4 +679,3 @@ HRESULT CTextService::_InvokeKeyHandler(ITfContext *pContext, WPARAM wParam, LPA
 Exit:
     return hr;
 }
-

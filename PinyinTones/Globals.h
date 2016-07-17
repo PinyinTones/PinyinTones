@@ -54,5 +54,15 @@ extern const GUID c_guidDisplayAttributeInput;
 
 #define EXIT_IF_FAILED(hr) if (FAILED(hr)) { goto Exit; }
 #define EXIT_IF(f) if (f) { goto Exit; }
+#define EXIT_IF_FAILED_WITH(hr, hrReturnValue) if (FAILED(hr))\
+{\
+    hr = hrReturnValue;\
+    goto Exit;\
+}
+#define EXIT_IF_WITH(f, hrReturnValue) if (f)\
+{\
+    hr = hrReturnValue;\
+    goto Exit;\
+}
 
 #endif // GLOBALS_H
