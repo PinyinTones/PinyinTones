@@ -195,30 +195,25 @@ BOOL CTextService::_IsKeyInsertable(WPARAM wVirtKey)
 HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
     ITfContext *pContext, WCHAR ch)
 {
+    HRESULT hr = S_OK;
+
     // Start a composition if we're not already in one
     if (!_IsComposing())
     {
-        HRESULT hr = _StartComposition(pContext);
-        if (hr != S_OK)
-        {
-            return hr;
-        }
+        hr = _StartComposition(pContext);
+        EXIT_IF_FAILED(hr);
     }
 
     // Handle numerals
     if ((ch >= L'0') && (ch <= L'9'))
     {
-        // A tone number will complete a Pinyin syllable
+        // Handle tones, but ignore other numerals.  It would be inconsistent
+        // for those other numerals to be inserted into the composition.
         if ((ch >= L'1') && (ch <= L'4'))
         {
-            HRESULT hrSetTone = _SetTone(ch, ec, pContext);
-            _TerminateComposition(ec, pContext);
-            return hrSetTone;
+            hr = _SetTone(ch, ec, pContext);
         }
-
-        // Other numerals should be ignored.  It would be inconsistent for some
-        // numerals to show up, but not others.
-        return S_OK;
+        goto Exit;
     }
 
     // Adjust the 'v' character, which does not exist in Pinyin
@@ -232,11 +227,8 @@ HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
     }
 
     // Insert character into composition
-    HRESULT hrInsert = _InsertCharacter(ch, ec, pContext);
-    if (hrInsert != S_OK)
-    {
-        return hrInsert;
-    }
+    hr = _InsertCharacter(ch, ec, pContext);
+    EXIT_IF_FAILED(hr);
 
     // Non-Pinyin characters should terminate the composition
     if (!_IsPinyinCharacter(ch))
@@ -244,7 +236,8 @@ HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
         _TerminateComposition(ec, pContext);
     }
 
-    return S_OK;
+Exit:
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
@@ -414,8 +407,8 @@ void CTextService::_SetTone(WCHAR* pVowelFirst, WCHAR* pVowelLast, WCHAR ch)
 //
 // _SetTone
 //
-// Sets the tone mark on the last vowel or vowel combination in the current
-// composition.
+// Sets the tone mark on the last vowel or vowel combination, then terminates
+// the current composition.
 //
 //----------------------------------------------------------------------------
 
@@ -427,31 +420,44 @@ HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
     tfSelection.range = nullptr;
 
     hr = _pComposition->GetRange(&pRangeComposition);
-    EXIT_IF_FAILED_WITH(hr, S_FALSE);
+    EXIT_IF_FAILED(hr);
 
-    // Find the character to put a tone over
+    // Get the text in the composition
     const int MAX_COMPOSITION_LENGTH = 1024;
     WCHAR buffer[MAX_COMPOSITION_LENGTH];
     ULONG cbBuffer;
     hr = pRangeComposition->GetText(ec, 0, buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
-    EXIT_IF_FAILED_WITH(hr, S_FALSE);
+    EXIT_IF_FAILED(hr);
 
-    // Locate the last vowel combination
+    // Set the tone in the text buffer
     WCHAR* pVowelFirst = NULL;
     WCHAR* pVowelLast = NULL;
     _FindLastVowels(buffer, cbBuffer, &pVowelFirst, &pVowelLast);
     _SetTone(pVowelFirst, pVowelLast, ch);
 
-    // Update the selection point to just after the inserted text
+    // Get the current selection
     ULONG cFetched;
     hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched);
-    EXIT_IF_FAILED_WITH(hr, S_FALSE);
-    EXIT_IF_WITH(cFetched != 1, S_FALSE);
+    EXIT_IF_FAILED(hr);
+    EXIT_IF_WITH(cFetched != 1, E_FAIL);
 
-    pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
-    tfSelection.range->Collapse(ec, TF_ANCHOR_END);
-    pContext->SetSelection(ec, 1, &tfSelection);
+    // Copy the text buffer back to the composition
+    hr = pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
+    EXIT_IF_FAILED(hr);
+
+    // SetText clears the composition display attribute.  We need to restore
+    // it, in case the composition is not terminated due to a later error.
     _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
+
+    // SetText moves the cursor to the start of the composition.  Move it back
+    // to its original location.
+    hr = tfSelection.range->Collapse(ec, TF_ANCHOR_END);
+    EXIT_IF_FAILED(hr);
+    hr = pContext->SetSelection(ec, 1, &tfSelection);
+    EXIT_IF_FAILED(hr);
+
+    // Every step has succeeded, so terminate the composition
+    _TerminateComposition(ec, pContext);
 
 Exit:
     if (pRangeComposition)
