@@ -215,15 +215,11 @@ HRESULT CTextService::_HandleCharacter(TfEditCookie ec,
         }
         goto Exit;
     }
-
-    // Adjust the 'v' character, which does not exist in Pinyin
-    if (ch == L'v')
+    // Handle the 'v' character, which can be used to type the 'ü' character
+    if ((ch == L'v') || (ch == L'V'))
     {
-        ch = PinyinVowels::uu0;
-    }
-    else if (ch == L'V')
-    {
-        ch = PinyinVowels::UU0;
+        hr = _HandleVCharacter(ch, ec, pContext);
+        goto Exit;
     }
 
     // Insert character into composition
@@ -405,6 +401,49 @@ void CTextService::_SetTone(WCHAR* pVowelFirst, WCHAR* pVowelLast, WCHAR ch)
 
 //+---------------------------------------------------------------------------
 //
+// _ReplaceCompositionText
+//
+// Replaces the text in the composition.
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTextService::_ReplaceCompositionText(WCHAR* buffer, ULONG cbBuffer,
+    ITfRange* pRangeComposition, TfEditCookie ec, ITfContext *pContext)
+{
+    HRESULT hr = S_OK;
+    TF_SELECTION tfSelection;
+    tfSelection.range = nullptr;
+
+    // Get the current selection
+    ULONG cFetched;
+    hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched);
+    EXIT_IF_FAILED(hr);
+    EXIT_IF_WITH(cFetched != 1, E_FAIL);
+
+    // Replace the composition with the text in the buffer
+    hr = pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
+    EXIT_IF_FAILED(hr);
+
+    // SetText clears the composition display attribute, so restore it.
+    _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
+
+    // SetText moves the cursor to the start of the composition.  Move it back
+    // to its original location.
+    hr = tfSelection.range->Collapse(ec, TF_ANCHOR_END);
+    EXIT_IF_FAILED(hr);
+    hr = pContext->SetSelection(ec, 1, &tfSelection);
+    EXIT_IF_FAILED(hr);
+
+Exit:
+    if (tfSelection.range)
+    {
+        tfSelection.range->Release();
+    }
+    return hr;
+}
+
+//+---------------------------------------------------------------------------
+//
 // _SetTone
 //
 // Sets the tone mark on the last vowel or vowel combination, then terminates
@@ -416,14 +455,11 @@ HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
 {
     HRESULT hr = S_OK;
     ITfRange *pRangeComposition = nullptr;
-    TF_SELECTION tfSelection;
-    tfSelection.range = nullptr;
 
     hr = _pComposition->GetRange(&pRangeComposition);
     EXIT_IF_FAILED(hr);
 
     // Get the text in the composition
-    const int MAX_COMPOSITION_LENGTH = 1024;
     WCHAR buffer[MAX_COMPOSITION_LENGTH];
     ULONG cbBuffer;
     hr = pRangeComposition->GetText(ec, 0, buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
@@ -435,25 +471,9 @@ HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
     _FindLastVowels(buffer, cbBuffer, &pVowelFirst, &pVowelLast);
     _SetTone(pVowelFirst, pVowelLast, ch);
 
-    // Get the current selection
-    ULONG cFetched;
-    hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched);
-    EXIT_IF_FAILED(hr);
-    EXIT_IF_WITH(cFetched != 1, E_FAIL);
-
-    // Copy the text buffer back to the composition
-    hr = pRangeComposition->SetText(ec, TF_ST_CORRECTION, buffer, cbBuffer);
-    EXIT_IF_FAILED(hr);
-
-    // SetText clears the composition display attribute.  We need to restore
-    // it, in case the composition is not terminated due to a later error.
-    _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
-
-    // SetText moves the cursor to the start of the composition.  Move it back
-    // to its original location.
-    hr = tfSelection.range->Collapse(ec, TF_ANCHOR_END);
-    EXIT_IF_FAILED(hr);
-    hr = pContext->SetSelection(ec, 1, &tfSelection);
+    // Replace the composition text with the buffer text
+    hr = _ReplaceCompositionText(buffer, cbBuffer, pRangeComposition,
+        ec, pContext);
     EXIT_IF_FAILED(hr);
 
     // Every step has succeeded, so terminate the composition
@@ -464,9 +484,63 @@ Exit:
     {
         pRangeComposition->Release();
     }
-    if (tfSelection.range)
+    return hr;
+}
+
+//+---------------------------------------------------------------------------
+//
+// _HandleVCharacter
+//
+// Handles the 'v' character.  One 'v' will insert a Pinyin 'ü' into the
+// composition, and a second 'v' will convert it back into a 'v'.
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTextService::_HandleVCharacter(WCHAR ch,
+    TfEditCookie ec, ITfContext *pContext)
+{
+    HRESULT hr = S_OK;
+    ITfRange *pRangeComposition = nullptr;
+
+    EXIT_IF_WITH((ch != 'v') && (ch != L'V'), E_FAIL);
+
+    hr = _pComposition->GetRange(&pRangeComposition);
+    EXIT_IF_FAILED(hr);
+
+    // Get the text in the composition
+    WCHAR buffer[MAX_COMPOSITION_LENGTH];
+    ULONG cbBuffer;
+    hr = pRangeComposition->GetText(ec, 0,
+        buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
+    EXIT_IF_FAILED(hr);
+
+    // Change the last character to a 'v' if it is already a 'ü'
+    WCHAR chLast = (cbBuffer > 0)
+        ? buffer[cbBuffer - 1]
+        : L'\0';
+    if ((chLast == PinyinVowels::uu0) || (chLast == PinyinVowels::UU0))
     {
-        tfSelection.range->Release();
+        buffer[cbBuffer - 1] = ch;
+        hr = _ReplaceCompositionText(buffer, cbBuffer,
+            pRangeComposition, ec, pContext);
+        EXIT_IF_FAILED(hr);
+
+        // Terminate the composition, as 'v' is not a Pinyin character
+        _TerminateComposition(ec, pContext);
+        goto Exit;
+    }
+
+    // Insert a 'ü' with the matching case
+    ch = (ch == L'v')
+        ? PinyinVowels::uu0
+        : PinyinVowels::UU0;
+    hr = _InsertCharacter(ch, ec, pContext);
+    EXIT_IF_FAILED(hr);
+
+Exit:
+    if (pRangeComposition)
+    {
+        pRangeComposition->Release();
     }
     return hr;
 }

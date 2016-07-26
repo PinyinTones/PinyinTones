@@ -21,6 +21,8 @@
 #ifndef TEXTSERVICE_H
 #define TEXTSERVICE_H
 
+#define MAX_COMPOSITION_LENGTH 1024
+
 class CLangBarIcon;
 class CLangBarItemButton;
 
@@ -124,17 +126,22 @@ private:
     void _CleanupComposition(TfEditCookie ec, ITfContext *pContext,
         BOOL fEndComposition);
 
-    // Utility functions to insert characters and add tones
+    // Utility functions to insert characters
     BOOL _IsKeyInsertable(WPARAM wVirtKey);
     HRESULT _HandleCharacter(TfEditCookie ec, ITfContext *pContext,
         WCHAR ch);
     HRESULT _InsertCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
+
+    // Utility functions to handle Pinyin characters
     int _LookupChar(WCHAR ch, WCHAR *vowels, int cbVowels);
     BOOL _IsPinyinCharacter(WCHAR ch);
     void _FindLastVowels(WCHAR* buffer, int cbBuffer, WCHAR** ppVowelFirst, WCHAR** ppVowelLast);
     void _RemoveTone(WCHAR* pVowelFirst, WCHAR* pVowelLast);
     void _SetTone(WCHAR* pVowelFirst, WCHAR* pVowelLast, WCHAR ch);
+    HRESULT _ReplaceCompositionText(WCHAR* buffer, ULONG cbBuffer,
+        ITfRange* pRangeComposition, TfEditCookie ec, ITfContext *pContext);
     HRESULT _SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
+    HRESULT _HandleVCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
 
     //
     // state
