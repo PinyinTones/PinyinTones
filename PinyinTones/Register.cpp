@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010-2012 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -38,39 +38,49 @@ static const TCHAR c_szModelName[] = TEXT("ThreadingModel");
 
 //+---------------------------------------------------------------------------
 //
-//  RegisterProfiles
+// GetLangId
+//
+// Gets the language ID that this text service should be registered under.
 //
 //----------------------------------------------------------------------------
 
-// Retrieve language for which to register the text service.
-LANGID ReadRegistryLangId()
+LANGID GetLangId()
 {
-    HRESULT hr;
-
     // Default to Japanese, in order to workaround bug in Microsoft Word,
     // in which toned vowels appear in an East Asian font even when the
     // characters exist in the current font.
     LANGID defaultLanguageId = MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN);
 
+    HRESULT hr = S_OK;
+    DWORD dwLanguageId = defaultLanguageId;
+
+    // The 32-bit and 64-bit DLLs should both read the same regkey
+    HKEY hKeyPinyinTones;
+    hr = RegOpenKeyExW(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\PinyinTones",
+        0,
+        KEY_WOW64_64KEY | KEY_READ,
+        &hKeyPinyinTones);
+    EXIT_IF_FAILED(hr);
+
     // Read alternative language ID from registry.
-    LANGID languageId = defaultLanguageId;
-    HKEY hkRegPinyinTones;
-    hr = RegOpenKeyW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\PinyinTones", &hkRegPinyinTones);
-
-    if (hr == S_OK)
+    DWORD cbData = sizeof(DWORD);
+    hr = RegGetValueW(
+        hKeyPinyinTones,
+        NULL,
+        L"TSFLanguage",
+        RRF_RT_REG_DWORD,
+        NULL,
+        &dwLanguageId,
+        &cbData);
+    if (FAILED(hr) || !dwLanguageId)
     {
-        DWORD dwLanguageId;
-        DWORD cbData = sizeof(DWORD);
-        hr = RegGetValueW(hkRegPinyinTones, NULL, L"TSFLanguage",
-                          RRF_RT_DWORD, NULL, &dwLanguageId, &cbData);
-
-        if ((hr == S_OK) && dwLanguageId)
-            languageId = (LANGID)dwLanguageId;
-        else
-            languageId = defaultLanguageId;
+        dwLanguageId = defaultLanguageId;
     }
 
-    return languageId;
+Exit:
+    return (LANGID)dwLanguageId;
 }
 
 
@@ -106,7 +116,7 @@ BOOL RegisterProfiles()
     achIconFile[cchIconFile] = '\0';
 
     // Get language in which to register the text service
-    LANGID languageId = ReadRegistryLangId();
+    LANGID languageId = GetLangId();
 
     //////////////////////////
     // Register text service
