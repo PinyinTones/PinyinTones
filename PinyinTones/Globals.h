@@ -65,4 +65,9 @@ extern const GUID c_guidDisplayAttributeInput;
     goto Exit;\
 }
 
+// Workaround for old versions of the Microsoft C++ compiler that lack nullptr
+#if (_MSC_VER < 1600)
+    #define nullptr 0
+#endif
+
 #endif // GLOBALS_H
