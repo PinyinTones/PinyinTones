@@ -555,47 +555,104 @@ Exit:
 
 HRESULT CTextService::_InsertCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
 {
-    ITfRange *pRangeComposition;
+    HRESULT hr = S_OK;
+
+    ITfRange *pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
+    tfSelection.range = nullptr;
     ULONG cFetched;
     BOOL fCovered;
 
-    // first, test where a keystroke would go in the document if an insert is done
-    if (pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched) != S_OK || cFetched != 1)
-        return S_FALSE;
+    // Get the current selection, where the text will be inserted
+    hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &cFetched);
+    EXIT_IF_FAILED(hr);
+    EXIT_IF_WITH(cFetched != 1, E_FAIL);
 
-    // is the insertion point covered by a composition?
-    if (_pComposition->GetRange(&pRangeComposition) == S_OK)
+    // Get the composition range
+    hr = _pComposition->GetRange(&pRangeComposition);
+    EXIT_IF_FAILED(hr);
+
+    // Do not insert character if selection is not covered by composition
+    fCovered = IsRangeCovered(ec, tfSelection.range, pRangeComposition);
+    EXIT_IF_WITH(!fCovered, E_FAIL);
+
+    // Shift composition if it is already full
+    hr = _ShiftCompositionIfFull(pRangeComposition, ec, pContext);
+    EXIT_IF_FAILED(hr);
+
+    // Append the character to the composition by setting the text at the
+    // selection point.  There is no need to obtain the ITfInsertAtSelection
+    // interface.
+    hr = tfSelection.range->SetText(ec, 0, &ch, 1);
+    EXIT_IF_FAILED(hr);
+
+    // The newly-inserted text will not have the display attribute, so reset
+    // the display attribute on the entire composition range.
+    _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
+
+    // Move the selection to the end of the inserted text
+    hr = tfSelection.range->Collapse(ec, TF_ANCHOR_END);
+    EXIT_IF_FAILED(hr);
+    hr = pContext->SetSelection(ec, 1, &tfSelection);
+    EXIT_IF_FAILED(hr);
+
+Exit:
+    if (tfSelection.range)
     {
-        fCovered = IsRangeCovered(ec, tfSelection.range, pRangeComposition);
-
+        tfSelection.range->Release();
+    }
+    if (pRangeComposition)
+    {
         pRangeComposition->Release();
+    }
+    return hr;
+}
 
-        if (!fCovered)
-        {
-            goto Exit;
-        }
+//+---------------------------------------------------------------------------
+//
+// _ShiftCompositionIfFull
+//
+// Shifts the start anchor if the composition has already reached the maximum
+// length.
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTextService::_ShiftCompositionIfFull(
+    ITfRange* pRangeComposition, TfEditCookie ec, ITfContext *pContext)
+{
+    HRESULT hr = S_OK;
+
+    // Get the text in the composition
+    WCHAR buffer[MAX_COMPOSITION_LENGTH];
+    ULONG cbBuffer;
+    hr = pRangeComposition->GetText(ec, 0,
+        buffer, MAX_COMPOSITION_LENGTH, &cbBuffer);
+    EXIT_IF_FAILED(hr);
+
+    // Do nothing if composition has not yet reached the maximum length
+    if (cbBuffer < MAX_COMPOSITION_LENGTH)
+    {
+        goto Exit;
     }
 
-    // insert the text
-    // use SetText here instead of InsertTextAtSelection because a composition was already started
-    //Don't allow to the app to adjust the insertion point inside the composition
-    if (tfSelection.range->SetText(ec, 0, &ch, 1) != S_OK)
-        goto Exit;
+    // Shift the start anchor on the range
+    LONG cchShift = cbBuffer - SHIFTED_COMPOSITION_LENGTH;
+    LONG cchShifted;
+    hr = pRangeComposition->ShiftStart(ec, cchShift, &cchShifted, NULL);
+    EXIT_IF_FAILED(hr);
+    EXIT_IF_WITH(cchShifted <= 0, E_FAIL);
 
-    // update the selection, make it an insertion point just past
-    // the inserted text.
-    tfSelection.range->Collapse(ec, TF_ANCHOR_END);
-    pContext->SetSelection(ec, 1, &tfSelection);
+    // Clear the display attribute on the whole composition
+    _ClearCompositionDisplayAttributes(ec, pContext);
 
-    //
-    // set the display attribute to the composition range.
-    //
+    // Shift the composition to the range
+    hr = _pComposition->ShiftStart(ec, pRangeComposition);
+
+    // Always reset the display attribute on the composition
     _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
 
 Exit:
-    tfSelection.range->Release();
-    return S_OK;
+    return hr;
 }
 
 //+---------------------------------------------------------------------------

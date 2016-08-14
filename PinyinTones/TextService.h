@@ -21,7 +21,12 @@
 #ifndef TEXTSERVICE_H
 #define TEXTSERVICE_H
 
-#define MAX_COMPOSITION_LENGTH 1024
+// The maximum length of a composition
+#define MAX_COMPOSITION_LENGTH 50
+
+// After the composition has reached the maximum length, the length to make the
+// remaining composition after shifting the start anchor.
+#define SHIFTED_COMPOSITION_LENGTH 20
 
 class CLangBarIcon;
 class CLangBarItemButton;
@@ -131,6 +136,8 @@ private:
     HRESULT _HandleCharacter(TfEditCookie ec, ITfContext *pContext,
         WCHAR ch);
     HRESULT _InsertCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pContext);
+    HRESULT _ShiftCompositionIfFull(
+        ITfRange* pRangeComposition, TfEditCookie ec, ITfContext *pContext);
 
     // Utility functions to handle Pinyin characters
     int _LookupChar(WCHAR ch, WCHAR *vowels, int cbVowels);
@@ -165,7 +172,6 @@ private:
 
     // guidatom for the display attibute.
     TfGuidAtom _gaDisplayAttributeInput;
-    TfGuidAtom _gaDisplayAttributeConverted;
 
     LONG _cRef;     // COM ref count
 };
