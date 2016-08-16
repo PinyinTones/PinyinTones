@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010-2012 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -46,7 +46,7 @@ HRESULT CTextService::CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **pp
 
     hr = pCase->QueryInterface(riid, ppvObj);
 
-    pCase->Release(); // caller still holds ref if hr == S_OK
+    SafeRelease(&pCase); // caller still holds ref if hr == S_OK
 
     return hr;
 }
@@ -209,7 +209,7 @@ STDAPI CTextService::Activate(ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
         (pDocMgrFocus != NULL))
     {
         _InitTextEditSink(pDocMgrFocus);
-        pDocMgrFocus->Release();
+        SafeRelease(&pDocMgrFocus);
     }
 
     //
@@ -274,8 +274,7 @@ STDAPI CTextService::Deactivate()
     // Release ALL refs to _pThreadMgr in Deactivate
     if (_pThreadMgr != NULL)
     {
-        _pThreadMgr->Release();
-        _pThreadMgr = NULL;
+        SafeRelease(&_pThreadMgr);
     }
 
     _tfClientId = TF_CLIENTID_NULL;

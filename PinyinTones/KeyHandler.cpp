@@ -435,10 +435,7 @@ HRESULT CTextService::_ReplaceCompositionText(WCHAR* buffer, ULONG cbBuffer,
     EXIT_IF_FAILED(hr);
 
 Exit:
-    if (tfSelection.range)
-    {
-        tfSelection.range->Release();
-    }
+    SafeRelease(&tfSelection.range);
     return hr;
 }
 
@@ -480,10 +477,7 @@ HRESULT CTextService::_SetTone(WCHAR ch, TfEditCookie ec, ITfContext *pContext)
     _TerminateComposition(ec, pContext);
 
 Exit:
-    if (pRangeComposition)
-    {
-        pRangeComposition->Release();
-    }
+    SafeRelease(&pRangeComposition);
     return hr;
 }
 
@@ -538,10 +532,7 @@ HRESULT CTextService::_HandleVCharacter(WCHAR ch,
     EXIT_IF_FAILED(hr);
 
 Exit:
-    if (pRangeComposition)
-    {
-        pRangeComposition->Release();
-    }
+    SafeRelease(&pRangeComposition);
     return hr;
 }
 
@@ -597,14 +588,8 @@ HRESULT CTextService::_InsertCharacter(WCHAR ch, TfEditCookie ec, ITfContext *pC
     EXIT_IF_FAILED(hr);
 
 Exit:
-    if (tfSelection.range)
-    {
-        tfSelection.range->Release();
-    }
-    if (pRangeComposition)
-    {
-        pRangeComposition->Release();
-    }
+    SafeRelease(&tfSelection.range);
+    SafeRelease(&pRangeComposition);
     return hr;
 }
 
@@ -695,10 +680,7 @@ HRESULT CTextService::_HandleEscapeKey(TfEditCookie ec, ITfContext *pContext)
     _TerminateComposition(ec, pContext);
 
 Exit:
-    if (pRangeComposition)
-    {
-        pRangeComposition->Release();
-    }
+    SafeRelease(&pRangeComposition);
     return hr;
 }
 
@@ -772,18 +754,9 @@ HRESULT CTextService::_HandleBackspaceKey(TfEditCookie ec, ITfContext *pContext)
     }
 
 Exit:
-    if (pRangeComposition)
-    {
-        pRangeComposition->Release();
-    }
-    if (tfSelection.range)
-    {
-        tfSelection.range->Release();
-    }
-    if (pRangeToDelete)
-    {
-        pRangeToDelete->Release();
-    }
+    SafeRelease(&pRangeComposition);
+    SafeRelease(&tfSelection.range);
+    SafeRelease(&pRangeToDelete);
     return hr;
 }
 
@@ -811,7 +784,7 @@ HRESULT CTextService::_InvokeKeyHandler(ITfContext *pContext, WPARAM wParam, LPA
     // the TF_ES_SYNC flag
     hr = pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
 
-    pEditSession->Release();
+    SafeRelease(&pEditSession);
 
 Exit:
     return hr;

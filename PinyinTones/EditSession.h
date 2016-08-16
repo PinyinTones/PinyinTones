@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -21,6 +21,7 @@
 #ifndef EDITSESSION_H
 #define EDITSESSION_H
 
+#include "Globals.h"
 #include "TextService.h"
 
 class CEditSessionBase : public ITfEditSession
@@ -37,8 +38,8 @@ public:
     }
     virtual ~CEditSessionBase()
     {
-        _pContext->Release();
-        _pTextService->Release();
+        SafeRelease(&_pContext);
+        SafeRelease(&_pTextService);
     }
 
     // IUnknown

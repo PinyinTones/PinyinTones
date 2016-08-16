@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -117,7 +117,7 @@ BOOL CTextService::_InitThreadMgrEventSink()
     fRet = TRUE;
 
 Exit:
-    pSource->Release();
+    SafeRelease(&pSource);
     return fRet;
 }
 
@@ -138,7 +138,7 @@ void CTextService::_UninitThreadMgrEventSink()
     if (_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource) == S_OK)
     {
         pSource->UnadviseSink(_dwThreadMgrEventSinkCookie);
-        pSource->Release();
+        SafeRelease(&pSource);
     }
 
     _dwThreadMgrEventSinkCookie = TF_INVALID_COOKIE;

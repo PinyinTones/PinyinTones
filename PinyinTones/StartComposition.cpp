@@ -100,15 +100,9 @@ STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
     hr = _pContext->SetSelection(ec, 1, &tfSelection);
 
 Exit:
-    if (pContextComposition != NULL)
-        pContextComposition->Release();
-
-    if (pRangeInsert != NULL)
-        pRangeInsert->Release();
-
-    if (pInsertAtSelection != NULL)
-        pInsertAtSelection->Release();
-
+    SafeRelease(&pContextComposition);
+    SafeRelease(&pRangeInsert);
+    SafeRelease(&pInsertAtSelection);
     return hr;
 }
 
@@ -146,7 +140,7 @@ HRESULT CTextService::_StartComposition(ITfContext *pContext)
         {
             return hrSession;
         }
-        pStartCompositionEditSession->Release();
+        SafeRelease(&pStartCompositionEditSession);
     }
 
     return S_OK;

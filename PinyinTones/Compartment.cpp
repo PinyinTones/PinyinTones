@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -70,7 +70,7 @@ BOOL CTextService::_IsKeyboardDisabled()
                     fDisabled = (BOOL)var.lVal;
                 }
             }
-            pCompartmentDisabled->Release();
+            SafeRelease(&pCompartmentDisabled);
         }
 
         // Check GUID_COMPARTMENT_EMPTYCONTEXT.
@@ -84,19 +84,15 @@ BOOL CTextService::_IsKeyboardDisabled()
                     fDisabled = (BOOL)var.lVal;
                 }
             }
-            pCompartmentEmptyContext->Release();
+            SafeRelease(&pCompartmentEmptyContext);
         }
 
-        pCompMgr->Release();
+        SafeRelease(&pCompMgr);
     }
 
 Exit:
-    if (pContext)
-        pContext->Release();
-
-    if (pDocMgrFocus)
-        pDocMgrFocus->Release();
-
+    SafeRelease(&pContext);
+    SafeRelease(&pDocMgrFocus);
     return fDisabled;
 }
 
@@ -128,7 +124,7 @@ BOOL CTextService::_IsKeyboardOpen()
                 }
             }
         }
-        pCompMgr->Release();
+        SafeRelease(&pCompMgr);
     }
 
     return fOpen;
@@ -158,7 +154,7 @@ HRESULT CTextService::_SetKeyboardOpen(BOOL fOpen)
             var.lVal = fOpen;
             hr = pCompartment->SetValue(_tfClientId, &var);
         }
-        pCompMgr->Release();
+        SafeRelease(&pCompMgr);
     }
 
     return hr;

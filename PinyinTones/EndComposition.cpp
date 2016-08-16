@@ -78,8 +78,7 @@ void CTextService::_CleanupComposition(TfEditCookie ec, ITfContext *pContext,
         }
 
         // Release the cached copy of the composition
-        _pComposition->Release();
-        _pComposition = NULL;
+        SafeRelease(&_pComposition);
     }
 }
 
@@ -103,6 +102,6 @@ void CTextService::_EndComposition(ITfContext *pContext)
             TF_ES_ASYNCDONTCARE | TF_ES_READWRITE,
             &hrSession);
 
-        pEditSession->Release();
+        SafeRelease(&pEditSession);
     }
 }

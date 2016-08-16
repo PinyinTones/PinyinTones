@@ -26,6 +26,7 @@
 #include <olectl.h>
 #include <assert.h>
 #include "msctf.h"
+#include "Util.h"
 
 void DllAddRef();
 void DllRelease();
@@ -51,23 +52,5 @@ extern const GUID c_guidLangBarIcon;
 extern const GUID c_guidLangBarItemButton;
 
 extern const GUID c_guidDisplayAttributeInput;
-
-#define EXIT_IF_FAILED(hr) if (FAILED(hr)) { goto Exit; }
-#define EXIT_IF(f) if (f) { goto Exit; }
-#define EXIT_IF_FAILED_WITH(hr, hrReturnValue) if (FAILED(hr))\
-{\
-    hr = hrReturnValue;\
-    goto Exit;\
-}
-#define EXIT_IF_WITH(f, hrReturnValue) if (f)\
-{\
-    hr = hrReturnValue;\
-    goto Exit;\
-}
-
-// Workaround for old versions of the Microsoft C++ compiler that lack nullptr
-#if (_MSC_VER < 1600)
-    #define nullptr 0
-#endif
 
 #endif // GLOBALS_H

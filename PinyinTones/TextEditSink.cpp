@@ -8,7 +8,7 @@
 // This code is released under the Microsoft Public License.  Please
 // refer to LICENSE.TXT for the full text of the license.
 //
-// Copyright © 2010 Tao Yue.  All rights reserved.
+// Copyright © 2010-2016 Tao Yue.  All rights reserved.
 // Portions Copyright © 2003 Microsoft Corporation.  All rights reserved.
 //
 // Adapted from the Text Services Framework Sample Code, available under
@@ -18,7 +18,7 @@
 //////////////////////////////////////////////////////////////////////
 
 
-#include "globals.h"
+#include "Globals.h"
 #include "TextService.h"
 
 BOOL IsRangeCovered(TfEditCookie ec, ITfRange *pRangeTest, ITfRange *pRangeCover);
@@ -64,7 +64,7 @@ STDAPI CTextService::OnEndEdit(ITfContext *pContext, TfEditCookie ecReadOnly, IT
                        _EndComposition(pContext);
                     }
 
-                    pRangeComposition->Release();
+                    SafeRelease(&pRangeComposition);
                 }
             }
         }
@@ -79,10 +79,10 @@ STDAPI CTextService::OnEndEdit(ITfContext *pContext, TfEditCookie ecReadOnly, IT
             // pRange is the updated range.
             //
 
-            pRange->Release();
+            SafeRelease(&pRange);
         }
 
-        pEnumTextChanges->Release();
+        SafeRelease(&pEnumTextChanges);
     }
 
     return S_OK;
@@ -108,11 +108,10 @@ BOOL CTextService::_InitTextEditSink(ITfDocumentMgr *pDocMgr)
         if (_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource) == S_OK)
         {
             pSource->UnadviseSink(_dwTextEditSinkCookie);
-            pSource->Release();
+            SafeRelease(&pSource);
         }
 
-        _pTextEditSinkContext->Release();
-        _pTextEditSinkContext = NULL;
+        SafeRelease(&_pTextEditSinkContext);
         _dwTextEditSinkCookie = TF_INVALID_COOKIE;
     }
 
@@ -139,13 +138,12 @@ BOOL CTextService::_InitTextEditSink(ITfDocumentMgr *pDocMgr)
         {
             _dwTextEditSinkCookie = TF_INVALID_COOKIE;
         }
-        pSource->Release();
+        SafeRelease(&pSource);
     }
 
     if (fRet == FALSE)
     {
-        _pTextEditSinkContext->Release();
-        _pTextEditSinkContext = NULL;
+        SafeRelease(&_pTextEditSinkContext);
     }
 
     return fRet;

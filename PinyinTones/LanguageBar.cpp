@@ -141,7 +141,7 @@ CLangBarItemButton::CLangBarItemButton(CTextService *pTextService)
 CLangBarItemButton::~CLangBarItemButton()
 {
     DllRelease();
-    _pTextService->Release();
+    SafeRelease(&_pTextService);
 }
 
 //+---------------------------------------------------------------------------
@@ -393,8 +393,7 @@ STDAPI CLangBarItemButton::UnadviseSink(DWORD dwCookie)
     if (_pLangBarItemSink == NULL)
         return CONNECT_E_NOCONNECTION;
 
-    _pLangBarItemSink->Release();
-    _pLangBarItemSink = NULL;
+    SafeRelease(&_pLangBarItemSink);
 
     return S_OK;
 }
@@ -421,15 +420,14 @@ BOOL CTextService::_InitLanguageBar()
 
     if (pLangBarItemMgr->AddItem(_pLangBarItem) != S_OK)
     {
-        _pLangBarItem->Release();
-        _pLangBarItem = NULL;
+        SafeRelease(&_pLangBarItem);
         goto Exit;
     }
 
     fRet = TRUE;
 
 Exit:
-    pLangBarItemMgr->Release();
+    SafeRelease(&pLangBarItemMgr);
     return fRet;
 }
 
@@ -449,9 +447,8 @@ void CTextService::_UninitLanguageBar()
     if (_pThreadMgr->QueryInterface(IID_ITfLangBarItemMgr, (void **)&pLangBarItemMgr) == S_OK)
     {
         pLangBarItemMgr->RemoveItem(_pLangBarItem);
-        pLangBarItemMgr->Release();
+        SafeRelease(&pLangBarItemMgr);
     }
 
-    _pLangBarItem->Release();
-    _pLangBarItem = NULL;
+    SafeRelease(&_pLangBarItem);
 }

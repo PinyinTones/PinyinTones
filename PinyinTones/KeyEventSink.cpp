@@ -164,7 +164,7 @@ BOOL CTextService::_InitKeyEventSink()
 
     hr = pKeystrokeMgr->AdviseKeyEventSink(_tfClientId, (ITfKeyEventSink *)this, TRUE);
 
-    pKeystrokeMgr->Release();
+    SafeRelease(&pKeystrokeMgr);
 
     return (hr == S_OK);
 }
@@ -185,7 +185,7 @@ void CTextService::_UninitKeyEventSink()
 
     pKeystrokeMgr->UnadviseKeyEventSink(_tfClientId);
 
-    pKeystrokeMgr->Release();
+    SafeRelease(&pKeystrokeMgr);
 }
 
 //+---------------------------------------------------------------------------

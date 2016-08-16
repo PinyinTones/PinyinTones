@@ -139,10 +139,8 @@ BOOL RegisterProfiles()
         goto Exit;
 
 Exit:
-    if (pProfileMgr)
-        pProfileMgr->Release();
-    if (pProfiles)
-        pProfiles->Release();
+    SafeRelease(&pProfileMgr);
+    SafeRelease(&pProfiles);
     return (hr == S_OK);
 }
 
@@ -163,7 +161,7 @@ void UnregisterProfiles()
         return;
 
     pInputProcessProfiles->Unregister(c_clsidTextService);
-    pInputProcessProfiles->Release();
+    SafeRelease(&pInputProcessProfiles);
 }
 
 //+---------------------------------------------------------------------------
@@ -208,7 +206,7 @@ BOOL RegisterCategories()
     }
 
 Exit:
-    pCategoryMgr->Release();
+    SafeRelease(&pCategoryMgr);
     return (hr == S_OK);
 }
 
@@ -243,7 +241,7 @@ void UnregisterCategories()
                                      GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER, 
                                      c_clsidTextService);
 
-    pCategoryMgr->Release();
+    SafeRelease(&pCategoryMgr);
     return;
 }
 

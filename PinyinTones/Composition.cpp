@@ -47,14 +47,8 @@ STDAPI CTextService::OnCompositionTerminated(TfEditCookie ecWrite, ITfCompositio
     }
 
 Exit:
-    if (pContext)
-    {
-        pContext->Release();
-    }
-    if (pRange)
-    {
-        pRange->Release();
-    }
+    SafeRelease(&pContext);
+    SafeRelease(&pRange);
     return hr;
 }
 
