@@ -9,26 +9,26 @@ BINDIR=..\bin\$(OUTDIR)
 all: $(BINDIR)\$(Proj).dll
 
 LINK32_OBJS= \
-	$(OUTDIR)\TextService.obj \
-	$(OUTDIR)\ThreadMgrEventSink.obj \
-	$(OUTDIR)\TextEditSink.obj \
-	$(OUTDIR)\LanguageBar.obj \
-	$(OUTDIR)\KeyEventSink.obj \
 	$(OUTDIR)\Compartment.obj \
-	$(OUTDIR)\KeyHandler.obj \
-	$(OUTDIR)\StartComposition.obj \
-	$(OUTDIR)\EndComposition.obj \
 	$(OUTDIR)\Composition.obj \
-	$(OUTDIR)\DisplayAttributeProvider.obj \
-	$(OUTDIR)\DisplayAttributeInfo.obj \
-	$(OUTDIR)\EnumDisplayAttributeInfo.obj \
 	$(OUTDIR)\DisplayAttribute.obj \
+	$(OUTDIR)\DisplayAttributeInfo.obj \
+	$(OUTDIR)\DisplayAttributeProvider.obj \
 	$(OUTDIR)\Dllmain.obj \
+	$(OUTDIR)\EndComposition.obj \
+	$(OUTDIR)\EnumDisplayAttributeInfo.obj \
 	$(OUTDIR)\Globals.obj \
+	$(OUTDIR)\KeyEventSink.obj \
+	$(OUTDIR)\KeyHandler.obj \
+	$(OUTDIR)\LanguageBar.obj \
 	$(OUTDIR)\PreComp.obj \
 	$(OUTDIR)\Register.obj \
-	$(OUTDIR)\Server.obj
-        
+	$(OUTDIR)\Server.obj \
+	$(OUTDIR)\StartComposition.obj \
+	$(OUTDIR)\TextEditSink.obj \
+	$(OUTDIR)\TextService.obj \
+	$(OUTDIR)\ThreadMgrEventSink.obj
+
 #----- If OUTDIR does not exist, then create directory
 $(OUTDIR) :
     if not exist "$(OUTDIR)/$(NULL)" mkdir $(OUTDIR)
@@ -55,106 +55,8 @@ $(BINDIR)\$(Proj).dll: $(OUTDIR) $(BINDIR) $(LINK32_OBJS) $(OUTDIR)\$(Proj).res
 #--------------------- Compiling C/CPP Files ---------------------------------------------
 #PLEASE REFER TO WIN32.MAK for the different Compiler options WIN32.MAK provides
 
-FILE=$(Proj)
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=TextService
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=ThreadMgrEventSink
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=TextEditSink
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=LanguageBar
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=KeyEventSink
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Compartment
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=KeyHandler
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=StartComposition
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=EndComposition
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Composition
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=DisplayAttributeProvider
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=DisplayAttributeInfo
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=EnumDisplayAttributeInfo
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=DisplayAttribute
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Dllmain
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Globals
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Precomp
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Register
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
-FILE=Server
-
-$(OUTDIR)\$(FILE).obj : .\$(FILE).cpp $(OUTDIR)
-    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" .\$(FILE).cpp
-
+{}.cpp{$(OUTDIR)}.obj:
+    $(cc) $(cdebug) $(cflags) $(cvarsdll) /Fo"$(OUTDIR)\\" /Fd"$(OUTDIR)\\" $<
 
 #--------------------- Compiling Resource Files ------------------------------------------
 #PLEASE REFER TO WIN32.MAK for the different Resource Compiler options WIN32.MAK provides
